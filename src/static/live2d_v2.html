@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        #live2d-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        #loading::after {
+            content: '';
+            display: block;
+            margin: 20px auto 0;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e7ff;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #status {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        #error {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(239, 68, 68, 0.95);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">✨ 加载Live2D中...</div>
+    <canvas id="live2d-canvas"></canvas>
+    <div id="status">准备中...</div>
+    <div id="error"></div>
+
+    <!-- PIXI.js -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
+    <!-- Live2D Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- pixi-live2d-display -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.5.0/dist/index.min.js"></script>
+
+    <script>
+    (async function() {
+        'use strict';
+
+        const loading = document.getElementById('loading');
+        const status = document.getElementById('status');
+        const errorDiv = document.getElementById('error');
+        const canvas = document.getElementById('live2d-canvas');
+
+        // 模型列表
+        const models = [
+            'https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model/Live2D/Senko_Normals/senko.model3.json',
+            'https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model/Live2D/HyperdimensionNeptunia/nepmain/index.json',
+            'https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model/Live2D/biaoqiang_3/biaoqiang_3.model3.json'
+        ];
+
+        const modelNames = ['仙狐', '海王星', '表枪'];
+        let currentModelIndex = 0;
+        let currentModel = null;
+        let app = null;
+
+        function showError(msg) {
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+            loading.style.display = 'none';
+        }
+
+        function updateStatus(msg) {
+            status.textContent = msg;
+        }
+
+        async function loadModel(index) {
+            try {
+                loading.style.display = 'block';
+                updateStatus('正在加载模型...');
+
+                // 如果已有模型，先移除
+                if (currentModel) {
+                    app.stage.removeChild(currentModel);
+                    currentModel.destroy();
+                }
+
+                // 加载新模型
+                const modelUrl = models[index];
+                console.log('Loading model:', modelUrl);
+
+                currentModel = await PIXI.live2d.Live2DModel.from(modelUrl, {
+                    autoInteract: true,
+                    autoUpdate: true
+                });
+
+                // 添加到舞台
+                app.stage.addChild(currentModel);
+
+                // 缩放和定位
+                const scale = Math.min(
+                    app.screen.width / currentModel.width,
+                    app.screen.height / currentModel.height
+                ) * 0.8;
+
+                currentModel.scale.set(scale);
+                currentModel.x = app.screen.width / 2;
+                currentModel.y = app.screen.height / 2;
+                currentModel.anchor.set(0.5, 0.5);
+
+                // 启用交互
+                currentModel.interactive = true;
+                currentModel.on('pointerdown', () => {
+                    currentModel.motion('tap_body');
+                });
+
+                loading.style.display = 'none';
+                updateStatus(`✨ ${modelNames[index]} | 点击切换模型`);
+
+                console.log('Model loaded successfully');
+
+            } catch (err) {
+                console.error('加载模型失败:', err);
+                showError('❌ 模型加载失败: ' + err.message);
+            }
+        }
+
+        try {
+            // 检查依赖
+            if (typeof PIXI === 'undefined') {
+                throw new Error('PIXI.js 加载失败');
+            }
+            if (typeof Live2DCubismCore === 'undefined') {
+                throw new Error('Live2D Cubism Core 加载失败');
+            }
+
+            // 创建PIXI应用
+            app = new PIXI.Application({
+                view: canvas,
+                width: window.innerWidth,
+                height: window.innerHeight,
+                transparent: true,
+                antialias: true,
+                resolution: window.devicePixelRatio || 1,
+                autoDensity: true
+            });
+
+            // 加载第一个模型
+            await loadModel(currentModelIndex);
+
+            // 点击画布切换模型
+            canvas.addEventListener('click', async () => {
+                currentModelIndex = (currentModelIndex + 1) % models.length;
+                await loadModel(currentModelIndex);
+            });
+
+            // 监听父窗口消息
+            window.addEventListener('message', (e) => {
+                if (e.data === 'speaking' && currentModel) {
+                    currentModel.motion('tap_body');
+                    updateStatus('🔊 正在说话...');
+                } else if (e.data === 'idle') {
+                    updateStatus(`✨ ${modelNames[currentModelIndex]} | 点击切换模型`);
+                }
+            });
+
+            // 响应式调整
+            window.addEventListener('resize', () => {
+                app.renderer.resize(window.innerWidth, window.innerHeight);
+                if (currentModel) {
+                    const scale = Math.min(
+                        app.screen.width / currentModel.width,
+                        app.screen.height / currentModel.height
+                    ) * 0.8;
+                    currentModel.scale.set(scale);
+                    currentModel.x = app.screen.width / 2;
+                    currentModel.y = app.screen.height / 2;
+                }
+            });
+
+        } catch (err) {
+            console.error('初始化失败:', err);
+            showError('❌ 初始化失败: ' + err.message);
+        }
+    })();
+    </script>
+</body>
+</html>

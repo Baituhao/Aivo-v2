@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live2D</title>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: linear-gradient(160deg, #e0e7ff 0%, #f3e8ff 100%);
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+#live2d-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+#live2dcanvas {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(calc(-50% + 130px));
+    cursor: pointer;
+}
+
+#loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #a78bfa;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#loading::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e0e7ff;
+    border-top-color: #a78bfa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 说话时的脉动动画 */
+@keyframes speaking-pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+#status {
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: #8b5cf6;
+    font-weight: 500;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    margin: 0 20px;
+}
+
+#error {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 80%;
+    font-size: 14px;
+}
+</style>
+</head>
+<body>
+<div id="live2d-container">
+    <div id="loading">✨ 加载Live2D中</div>
+    <div id="status">准备中...</div>
+    <div id="error"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/live2d-widget@3.1.4/lib/L2Dwidget.min.js"></script>
+<script>
+(function() {
+    'use strict';
+
+    // 在 L2Dwidget 初始化之前就 hook canvas 的 addEventListener
+    console.log('[Live2D] 提前设置hook');
+
+    let originalClickHandler = null;
+    let canvasCheckInterval = setInterval(function() {
+        const canvas = document.getElementById('live2dcanvas');
+        if (canvas && !canvas.__hooked) {
+            canvas.__hooked = true;
+            console.log('[Live2D] 找到canvas，开始hook');
+
+            // 保存原始的 addEventListener
+            const originalAddEventListener = canvas.addEventListener.bind(canvas);
+
+            // 替换 addEventListener
+            canvas.addEventListener = function(type, listener, options) {
+                console.log('[Live2D] 拦截addEventListener:', type, typeof listener);
+
+                if ((type === 'click' || type === 'mousedown' || type === 'mouseup') && typeof listener === 'function') {
+                    originalClickHandler = listener;
+                    console.log('[Live2D] ✅ 成功捕获', type, '处理器');
+                    window.__live2dClickHandler = listener; // 保存到全局
+                }
+
+                return originalAddEventListener(type, listener, options);
+            };
+        }
+    }, 100);
+
+    // 10秒后停止检查
+    setTimeout(function() {
+        clearInterval(canvasCheckInterval);
+    }, 10000);
+
+    const models = [
+        "https://cdn.jsdelivr.net/npm/live2d-widget-model-shizuku@1.0.5/assets/shizuku.model.json",
+        "https://cdn.jsdelivr.net/npm/live2d-widget-model-hijiki@1.0.5/assets/hijiki.model.json",
+        "https://cdn.jsdelivr.net/npm/live2d-widget-model-tororo@1.0.5/assets/tororo.model.json",
+        "https://cdn.jsdelivr.net/npm/live2d-widget-model-miku@1.0.5/assets/miku.model.json",
+        "https://cdn.jsdelivr.net/npm/live2d-widget-model-koharu@1.0.5/assets/koharu.model.json",
+        "https://cdn.jsdelivr.net/npm/live2d-widget-model-haruto@1.0.5/assets/haruto.model.json"
+    ];
+
+    const modelNames = ['Shizuku', 'Hijiki', 'Tororo', 'Miku', 'Koharu', 'Haruto'];
+    let currentModel = 0;
+    let isLoading = false;
+
+    function showError(msg) {
+        const errorEl = document.getElementById('error');
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    function hideError() {
+        document.getElementById('error').style.display = 'none';
+    }
+
+    function updateStatus(msg) {
+        const statusEl = document.getElementById('status');
+        if (statusEl) statusEl.textContent = msg;
+    }
+
+    function getContainerSize() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const size = Math.min(w * 0.8, h * 0.8, 280);
+        return {
+            width: Math.round(size),
+            height: Math.round(size * 1.35)
+        };
+    }
+
+    function initLive2D() {
+        if (isLoading) return;
+        isLoading = true;
+
+        hideError();
+        document.getElementById('loading').style.display = 'flex';
+        updateStatus('正在加载模型...');
+
+        console.log('初始化Live2D，当前模型索引:', currentModel, '模型名:', modelNames[currentModel]);
+
+        try {
+            if (typeof L2Dwidget === 'undefined') {
+                showError('❌ Live2D库加载失败，请刷新重试');
+                isLoading = false;
+                return;
+            }
+
+            const { width, height } = getContainerSize();
+
+            L2Dwidget.init({
+                pluginRootPath: "https://cdn.jsdelivr.net/npm/live2d-widget@3.1.4/",
+                pluginJsPath: "lib/",
+                pluginModelPath: "assets/",
+                tagVersion: "UNSAFE_NODE_NOT_DEFINED",
+                debug: false,
+                model: {
+                    jsonPath: models[currentModel],
+                    scale: 1
+                },
+                display: {
+                    superSample: 2,
+                    width: width,
+                    height: height,
+                    position: "center",
+                    hOffset: 300,
+                    vOffset: 100
+                },
+                mobile: {
+                    show: true,
+                    scale: 0.9
+                },
+                react: {
+                    opacityDefault: 1,
+                    opacityOnHover: 0.85
+                }
+            });
+
+            // 等待canvas出现
+            let tries = 0;
+            const maxTries = 30;
+            const checkInterval = setInterval(() => {
+                const canvas = document.getElementById('live2dcanvas');
+                if (canvas) {
+                    clearInterval(checkInterval);
+                    document.getElementById('loading').style.display = 'none';
+                    updateStatus(`✨ ${modelNames[currentModel]} | 正在待命`);
+                    isLoading = false;
+
+                    // 不再绑定canvas点击事件，让L2Dwidget自己处理交互
+                    // canvas.addEventListener('click', function(e) {
+                    //     e.stopPropagation();
+                    //     switchModel();
+                    // });
+
+                    console.log('模型加载成功:', modelNames[currentModel]);
+                } else if (tries++ >= maxTries) {
+                    clearInterval(checkInterval);
+                    showError('❌ 模型加载超时，请刷新重试');
+                    isLoading = false;
+                }
+            }, 300);
+
+        } catch (err) {
+            console.error('Live2D初始化错误:', err);
+            showError('❌ 初始化失败: ' + err.message);
+            isLoading = false;
+        }
+    }
+
+    // 点击切换模型
+    function switchModel() {
+        if (isLoading) {
+            console.log('正在加载中，跳过切换');
+            return;
+        }
+
+        console.log('切换前模型索引:', currentModel);
+
+        // 切换到下一个模型
+        currentModel = (currentModel + 1) % models.length;
+
+        console.log('切换后模型索引:', currentModel, '模型名:', modelNames[currentModel]);
+
+        // 显示加载状态
+        updateStatus('正在切换模型...');
+
+        // 清除旧canvas和相关元素
+        const oldCanvas = document.getElementById('live2dcanvas');
+        if (oldCanvas) {
+            console.log('移除旧canvas');
+            oldCanvas.remove();
+        }
+
+        // 清理可能的残留元素
+        const oldWidgets = document.querySelectorAll('[id^="landlord"]');
+        oldWidgets.forEach(el => el.remove());
+
+        // 延迟重新初始化，确保清理完成
+        setTimeout(() => {
+            console.log('准备重新初始化，模型索引:', currentModel);
+            initLive2D();
+        }, 100);
+    }
+
+    // 不在这里监听点击，改为在canvas加载后绑定
+    // 这样避免多次触发
+
+    let speakingInterval = null; // 说话时的定时器
+
+    // 接收父页面的消息
+    window.addEventListener('message', function(e) {
+        console.log('📩 [Live2D] 收到消息:', e.data);
+
+        // 检查是否是 speaking 消息（可能包含时间戳）
+        if (e.data && e.data.toString().startsWith('speaking')) {
+            updateStatus('🔊 正在说话...');
+
+            const canvas = document.getElementById('live2dcanvas');
+            if (canvas) {
+                console.log('💬 [Live2D] 开始视觉效果和点击尝试');
+
+                // 先清理之前的定时器
+                if (speakingInterval) {
+                    clearInterval(speakingInterval);
+                    speakingInterval = null;
+                }
+
+                // 立即添加视觉效果
+                canvas.style.animation = 'speaking-pulse 0.6s ease-in-out infinite';
+                canvas.style.filter = 'drop-shadow(0 0 20px rgba(102, 126, 234, 0.8)) brightness(1.1)';
+                canvas.style.transform = 'scale(1.02)';
+                console.log('[Live2D] ✅ 已添加视觉效果');
+
+                // 反复触发点击序列
+                let clickCount = 0;
+                speakingInterval = setInterval(function() {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = rect.left + rect.width / 2;
+                    const y = rect.top + rect.height / 2;
+
+                    ['mouseover', 'mouseenter', 'mousemove', 'mousedown', 'mouseup', 'click'].forEach(function(eventType) {
+                        const event = new MouseEvent(eventType, {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            detail: eventType === 'click' ? 1 : 0,
+                            clientX: x,
+                            clientY: y,
+                            screenX: x,
+                            screenY: y,
+                            button: 0,
+                            buttons: eventType === 'mousedown' ? 1 : 0,
+                            relatedTarget: null
+                        });
+                        canvas.dispatchEvent(event);
+                    });
+
+                    clickCount++;
+                    if (clickCount === 1) {
+                        console.log('[Live2D] 开始反复触发点击序列');
+                    }
+                }, 800);
+
+            } else {
+                console.log('❌ [Live2D] 找不到canvas元素');
+            }
+        } else if (e.data === 'idle') {
+            updateStatus(`✨ ${modelNames[currentModel]} | 正在待命`);
+            console.log('😴 [Live2D] 停止说话');
+
+            // 停止点击
+            if (speakingInterval) {
+                clearInterval(speakingInterval);
+                speakingInterval = null;
+                console.log('[Live2D] 已停止点击序列');
+            }
+
+            // 移除视觉效果
+            const canvas = document.getElementById('live2dcanvas');
+            if (canvas) {
+                canvas.style.animation = '';
+                canvas.style.filter = '';
+                canvas.style.transform = '';
+                console.log('[Live2D] 已移除视觉效果');
+            }
+        }
+    });
+
+    // 页面加载完成后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLive2D);
+    } else {
+        initLive2D();
+    }
+
+    // 响应式调整
+    window.addEventListener('resize', function() {
+        // 可以在这里添加响应式逻辑
+    });
+
+})();
+</script>
+</body>
+</html>

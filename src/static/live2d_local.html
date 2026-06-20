@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+            font-family: -apple-system, sans-serif;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        #loading::after {
+            content: '';
+            display: block;
+            margin: 20px auto;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e7ff;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #status {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        #error {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(239, 68, 68, 0.95);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">✨ 加载Live2D中...</div>
+    <div id="status">准备中...</div>
+    <div id="error"></div>
+
+    <!-- 使用本地L2Dwidget库 -->
+    <script src="./live2d_assets/lib/L2Dwidget.min.js"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        const loading = document.getElementById('loading');
+        const status = document.getElementById('status');
+        const errorDiv = document.getElementById('error');
+
+        // 本地模型路径
+        const modelPath = './live2d_assets/models/shizuku/shizuku.model.json';
+
+        function showError(msg) {
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+            loading.style.display = 'none';
+        }
+
+        function updateStatus(msg) {
+            if (status) status.textContent = msg;
+        }
+
+        function getContainerSize() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const size = Math.min(w * 0.8, h * 0.8, 280);
+            return {
+                width: Math.round(size),
+                height: Math.round(size * 1.35)
+            };
+        }
+
+        function initLive2D() {
+            loading.style.display = 'block';
+            errorDiv.style.display = 'none';
+            updateStatus('正在加载模型...');
+
+            try {
+                if (typeof L2Dwidget === 'undefined') {
+                    setTimeout(function() {
+                        if (typeof L2Dwidget === 'undefined') {
+                            showError('❌ Live2D库加载失败');
+                        } else {
+                            initLive2D();
+                        }
+                    }, 2000);
+                    return;
+                }
+
+                const { width, height } = getContainerSize();
+
+                L2Dwidget.init({
+                    pluginRootPath: "./live2d_assets/lib/",
+                    pluginJsPath: "",
+                    pluginModelPath: "./live2d_assets/models/shizuku/",
+                    tagVersion: "UNSAFE_NODE_NOT_DEFINED",
+                    debug: false,
+                    model: {
+                        jsonPath: modelPath,
+                        scale: 1
+                    },
+                    display: {
+                        superSample: 2,
+                        width: width,
+                        height: height,
+                        position: "left",
+                        hOffset: 0,
+                        vOffset: 0
+                    },
+                    mobile: {
+                        show: true,
+                        scale: 0.9
+                    },
+                    react: {
+                        opacityDefault: 1,
+                        opacityOnHover: 0.85
+                    }
+                });
+
+                let tries = 0;
+                const maxTries = 30;
+                const checkInterval = setInterval(function() {
+                    const canvas = document.getElementById('live2dcanvas');
+                    if (canvas) {
+                        clearInterval(checkInterval);
+                        loading.style.display = 'none';
+                        updateStatus('✨ Shizuku | 本地模型');
+                        console.log('Live2D加载成功');
+                    } else if (tries++ >= maxTries) {
+                        clearInterval(checkInterval);
+                        showError('❌ 模型加载超时');
+                    }
+                }, 300);
+
+            } catch (err) {
+                console.error('Live2D初始化错误:', err);
+                showError('❌ 初始化失败: ' + err.message);
+            }
+        }
+
+        window.addEventListener('message', function(e) {
+            if (e.data === 'speaking') {
+                updateStatus('🔊 正在说话...');
+            } else if (e.data === 'idle') {
+                updateStatus('✨ Shizuku | 本地模型');
+            }
+        });
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initLive2D);
+        } else {
+            initLive2D();
+        }
+    })();
+    </script>
+</body>
+</html>

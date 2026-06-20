@@ -1,0 +1,71 @@
+{
+  "version": "1.0",
+  "default_voice": "冰糖",
+  "gender_preference": "female",
+  "auto_switch_voice": true,
+  "enable_emotion_tags": true,
+  "voice_mapping": {
+    "female": {
+      "happy": "冰糖",
+      "sad": "茉莉",
+      "neutral": "茉莉",
+      "surprised": "冰糖"
+    },
+    "male": {
+      "happy": "白桦",
+      "sad": "苏打",
+      "neutral": "苏打",
+      "surprised": "白桦"
+    }
+  },
+  "available_voices": {
+    "chinese_female": [
+      {
+        "name": "冰糖",
+        "description": "明亮活泼、元气满满",
+        "preview": "你好，我是冰糖！"
+      },
+      {
+        "name": "茉莉",
+        "description": "温柔平静、知性优雅",
+        "preview": "你好，我是茉莉。"
+      }
+    ],
+    "chinese_male": [
+      {
+        "name": "苏打",
+        "description": "沉稳大气、富有磁性",
+        "preview": "你好，我是苏打。"
+      },
+      {
+        "name": "白桦",
+        "description": "清朗阳光、亲和力强",
+        "preview": "你好，我是白桦！"
+      }
+    ],
+    "english_female": [
+      {
+        "name": "Mia",
+        "description": "温柔甜美",
+        "preview": "Hello, I'm Mia."
+      },
+      {
+        "name": "Chloe",
+        "description": "专业清晰",
+        "preview": "Hello, I'm Chloe."
+      }
+    ],
+    "english_male": [
+      {
+        "name": "Milo",
+        "description": "沉稳专业",
+        "preview": "Hello, I'm Milo."
+      },
+      {
+        "name": "Dean",
+        "description": "亲切友好",
+        "preview": "Hello, I'm Dean."
+      }
+    ]
+  }
+}
