@@ -710,10 +710,11 @@ class AivoWebUIV6:
     def export_history(self):
         """导出对话历史为JSON"""
         if not self.conversation_history:
-            return None
+            return "<div style='text-align:center;color:#9ca3af;padding:20px;'>❌ 没有可导出的历史</div>"
 
         export_data = {
             "export_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "session_id": self.current_session_id,
             "total_conversations": len(self.conversation_history),
             "stats": self.stats,
             "conversations": self.conversation_history
@@ -725,32 +726,45 @@ class AivoWebUIV6:
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(export_data, f, ensure_ascii=False, indent=2)
 
-        return str(filepath)
+        return f"<div style='text-align:center;color:#10b981;padding:20px;'>✅ 已导出到: {filepath}</div>"
 
     def search_history(self, keyword: str):
-        """搜索对话历史"""
+        """搜索所有会话的对话历史"""
         if not keyword.strip():
             return "请输入搜索关键词"
 
         results = []
-        for i, conv in enumerate(self.conversation_history):
-            if keyword.lower() in conv['user'].lower() or keyword.lower() in conv['assistant'].lower():
-                results.append(f"""
-                <div style="background:white;padding:12px;border-radius:10px;margin:8px 0;
-                    box-shadow:0 2px 8px rgba(0,0,0,0.08);border-left:4px solid #667eea;">
-                    <div style="font-size:0.75em;color:#9ca3af;margin-bottom:6px;">
-                        💬 对话 #{i+1} | {conv['timestamp']} | {conv['emotion']} | {conv['response_time']}s
-                    </div>
-                    <div style="margin-bottom:8px;">
-                        <span style="font-weight:700;color:#4338ca;">用户：</span>
-                        <span style="color:#1f2937;">{conv['user']}</span>
-                    </div>
-                    <div>
-                        <span style="font-weight:700;color:#7c3aed;">Aivo：</span>
-                        <span style="color:#4b5563;">{conv['assistant']}</span>
-                    </div>
-                </div>
-                """)
+        session_files = sorted(SESSIONS_DIR.glob("session_*.json"), key=lambda x: x.stat().st_mtime, reverse=True)
+
+        for session_file in session_files:
+            try:
+                with open(session_file, 'r', encoding='utf-8') as f:
+                    session_data = json.load(f)
+
+                session_id = session_data.get('session_id', 'unknown')
+                last_updated = session_data.get('last_updated', '')
+                conversation_history = session_data.get('conversation_history', [])
+
+                for i, conv in enumerate(conversation_history):
+                    if keyword.lower() in conv.get('user', '').lower() or keyword.lower() in conv.get('assistant', '').lower():
+                        results.append(f"""
+                        <div style="background:white;padding:12px;border-radius:10px;margin:8px 0;
+                            box-shadow:0 2px 8px rgba(0,0,0,0.08);border-left:4px solid #667eea;">
+                            <div style="font-size:0.75em;color:#9ca3af;margin-bottom:6px;">
+                                📁 会话 {session_id} | 💬 对话 #{i+1} | {conv.get('timestamp', '')} | {conv.get('emotion', 'neutral')}
+                            </div>
+                            <div style="margin-bottom:8px;">
+                                <span style="font-weight:700;color:#4338ca;">用户：</span>
+                                <span style="color:#1f2937;">{conv.get('user', '')}</span>
+                            </div>
+                            <div>
+                                <span style="font-weight:700;color:#7c3aed;">Aivo：</span>
+                                <span style="color:#4b5563;">{conv.get('assistant', '')}</span>
+                            </div>
+                        </div>
+                        """)
+            except Exception as e:
+                print(f"⚠️ 搜索会话 {session_file} 失败: {e}")
 
         if not results:
             return f"<div style='text-align:center;color:#9ca3af;padding:20px;'>未找到包含 '{keyword}' 的对话</div>"
@@ -1321,7 +1335,7 @@ class AivoWebUIV6:
                                 export_btn = gr.Button("💾 导出当前会话", size="sm")
                             with gr.Row():
                                 search_input = gr.Textbox(
-                                    placeholder="🔍 搜索对话内容...",
+                                    placeholder="🔍 搜索所有会话...",
                                     show_label=False,
                                     scale=3
                                 )
@@ -1336,7 +1350,7 @@ class AivoWebUIV6:
                                 • 🗑️ 清空所有：保存后重置所有数据<br>
                                 • 📂 加载会话：从历史中恢复会话<br>
                                 • 💾 导出：保存对话为JSON文件<br>
-                                • 🔍 搜索：查找当前会话内容
+                                • 🔍 搜索：查找所有会话内容
                             </div>
                             """)
 
@@ -1873,11 +1887,7 @@ class AivoWebUIV6:
 
             export_btn.click(
                 fn=self.export_history,
-                outputs=None
-            ).then(
-                fn=lambda path: f"✅ 历史已导出到: {path}" if path else "❌ 没有可导出的历史",
-                inputs=None,
-                outputs=search_results
+                outputs=[search_results]
             )
 
             search_btn.click(
