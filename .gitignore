@@ -70,3 +70,7 @@ node_modules/
 
 # Test outputs
 *.export.json
+
+# Report files (generated)
+*.pdf
+report.md
