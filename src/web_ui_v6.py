@@ -1009,7 +1009,7 @@ class AivoWebUIV6:
                     </div>
 
                     <!-- 系统状态指示 -->
-                    <div style="margin-top:20px;display:flex;gap:20px;justify-content:center;">
+                    <div style="margin-top:20px;display:flex;gap:20px;justify-content:center;flex-wrap:wrap;">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <div style="width:10px;height:10px;background:#10b981;border-radius:50%;
                                 box-shadow:0 0 10px rgba(16,185,129,0.8);"></div>
@@ -1025,6 +1025,19 @@ class AivoWebUIV6:
                                 box-shadow:0 0 10px rgba(139,92,246,0.8);"></div>
                             <span style="color:rgba(255,255,255,0.8);font-size:0.85em;">Live2D 已就绪</span>
                         </div>
+                    </div>
+
+                    <!-- GitHub 链接 -->
+                    <div style="margin-top:20px;">
+                        <a href="https://github.com/Baituhao/Aivo-v2" target="_blank"
+                            style="display:inline-block;padding:10px 24px;
+                            background:linear-gradient(135deg,rgba(255,255,255,0.15),rgba(255,255,255,0.05));
+                            border-radius:25px;color:white;text-decoration:none;font-size:0.95em;
+                            border:1px solid rgba(255,255,255,0.3);
+                            backdrop-filter:blur(10px);
+                            transition:all 0.3s ease;">
+                            ⭐ GitHub 仓库
+                        </a>
                     </div>
                 </div>
             </div>
@@ -1745,17 +1758,7 @@ class AivoWebUIV6:
                         </b>
                         <span style="color:rgba(255,255,255,0.7);"> - 基于小米 MiMo API 的智能数字人系统</span>
                     </div>
-                    <div style="margin-top:12px;">
-                        <a href="https://github.com/Baituhao/Aivo-v2" target="_blank"
-                            style="display:inline-block;padding:8px 20px;
-                            background:linear-gradient(135deg,rgba(102,126,234,0.8),rgba(118,75,162,0.8));
-                            border-radius:20px;color:white;text-decoration:none;font-size:0.9em;
-                            border:1px solid rgba(255,255,255,0.3);
-                            transition:all 0.3s ease;">
-                            ⭐ GitHub 仓库
-                        </a>
-                    </div>
-                    <div style="color:rgba(255,255,255,0.6);font-size:0.85em;margin-top:12px;">
+                    <div style="color:rgba(255,255,255,0.6);font-size:0.85em;margin-top:10px;">
                         Powered by MiMo API · Live2D Cubism SDK · Gradio
                     </div>
                     <div style="color:rgba(255,255,255,0.5);font-size:0.8em;margin-top:8px;">
