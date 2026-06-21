@@ -181,8 +181,8 @@ class AivoWebUIV6:
         sessions = self._get_sessions_list()
         choices = []
         for s in sessions:
-            # 格式：💬 "第一条消息..." (5条对话) - 2025-06-21 14:30
-            choice = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']}"
+            # 格式：💬 "第一条消息..." (5条对话) - 2025-06-21 14:30 [ID:xxx]
+            choice = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']} [ID:{s['id']}]"
             choices.append(choice)
         return choices
 
@@ -241,7 +241,7 @@ class AivoWebUIV6:
             current_display = None
             for s in sessions:
                 if s['id'] == session_id:
-                    current_display = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']}"
+                    current_display = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']} [ID:{s['id']}]"
                     break
 
             print(f"✅ 已加载会话: {session_id}，包含 {len(self.conversation_history)} 轮对话")
@@ -1802,8 +1802,7 @@ class AivoWebUIV6:
                 sessions = self._get_sessions_list()
                 choices = []
                 for s in sessions:
-                    # 格式：💬 "第一条消息..." (5条对话) - 2025-06-21 14:30
-                    choice = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']}"
+                    choice = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']} [ID:{s['id']}]"
                     choices.append(choice)
                 return gr.Dropdown(choices=choices)
 
@@ -1812,7 +1811,7 @@ class AivoWebUIV6:
                 sessions = self._get_sessions_list()
                 choices = []
                 for s in sessions:
-                    choice = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']}"
+                    choice = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']} [ID:{s['id']}]"
                     choices.append(choice)
                 return gr.Dropdown(choices=choices), gr.Dropdown(choices=choices)
 
@@ -1826,13 +1825,16 @@ class AivoWebUIV6:
                 if not choice:
                     return None, self._format_stats(), "请先选择会话", None
 
-                # 从显示文本中提取时间戳，再从时间戳推导出 session_id
-                # 格式：💬 "消息..." (5条) - 2025-06-21 14:30:25
+                # 从显示文本中提取 session_id
+                # 格式：💬 "消息..." (5条) - 2025-06-21 14:30:25 [ID:20250621_143025]
                 try:
-                    # 提取最后的时间部分
-                    time_part = choice.split(" - ")[-1]  # "2025-06-21 14:30:25"
-                    # 转换为 session_id 格式 20250621_143025
-                    session_id = time_part.replace("-", "").replace(":", "").replace(" ", "_")
+                    # 提取 [ID:xxx] 中的 session_id
+                    if "[ID:" in choice:
+                        session_id = choice.split("[ID:")[1].rstrip("]")
+                    else:
+                        # 备用方案：从时间推导
+                        time_part = choice.split(" - ")[-1]
+                        session_id = time_part.replace("-", "").replace(":", "").replace(" ", "_")
 
                     # 尝试加载
                     result = self.load_session(session_id)
@@ -1840,12 +1842,6 @@ class AivoWebUIV6:
                     return result[0], result[1], result[2], result[3] if len(result) > 3 else choice
                 except Exception as e:
                     print(f"解析会话失败: {e}")
-                    # 备用方案：从所有会话中匹配
-                    sessions = self._get_sessions_list()
-                    for s in sessions:
-                        if s['last_updated'] in choice:
-                            result = self.load_session(s['id'])
-                            return result[0], result[1], result[2], result[3] if len(result) > 3 else choice
                     return None, self._format_stats(), "❌ 无法加载会话", None
 
             # 右侧面板的加载按钮 - 同步更新两个选择器
