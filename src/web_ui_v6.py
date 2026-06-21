@@ -1745,7 +1745,17 @@ class AivoWebUIV6:
                         </b>
                         <span style="color:rgba(255,255,255,0.7);"> - 基于小米 MiMo API 的智能数字人系统</span>
                     </div>
-                    <div style="color:rgba(255,255,255,0.6);font-size:0.85em;margin-top:10px;">
+                    <div style="margin-top:12px;">
+                        <a href="https://github.com/Baituhao/Aivo-v2" target="_blank"
+                            style="display:inline-block;padding:8px 20px;
+                            background:linear-gradient(135deg,rgba(102,126,234,0.8),rgba(118,75,162,0.8));
+                            border-radius:20px;color:white;text-decoration:none;font-size:0.9em;
+                            border:1px solid rgba(255,255,255,0.3);
+                            transition:all 0.3s ease;">
+                            ⭐ GitHub 仓库
+                        </a>
+                    </div>
+                    <div style="color:rgba(255,255,255,0.6);font-size:0.85em;margin-top:12px;">
                         Powered by MiMo API · Live2D Cubism SDK · Gradio
                     </div>
                     <div style="color:rgba(255,255,255,0.5);font-size:0.8em;margin-top:8px;">
