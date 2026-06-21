@@ -1162,37 +1162,37 @@ class AivoWebUIV6:
 
                 <!-- 技术栈 -->
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;">
-                    <div style="background:white;padding:15px;border-radius:12px;
-                        box-shadow:0 2px 10px rgba(0,0,0,0.05);border-left:4px solid #667eea;">
-                        <div style="font-weight:700;color:#1e293b;margin-bottom:8px;">🤖 AI 模型</div>
-                        <div style="font-size:0.85em;color:#64748b;">
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px;border-radius:12px;
+                        box-shadow:0 2px 10px rgba(0,0,0,0.2);border-left:4px solid #667eea;">
+                        <div style="font-weight:700;color:#ffffff;margin-bottom:8px;">🤖 AI 模型</div>
+                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);">
                             <div>• MiMo v2.5 Pro (1T 参数)</div>
                             <div>• Function Calling 支持</div>
                             <div>• 结构化 JSON 响应</div>
                         </div>
                     </div>
-                    <div style="background:white;padding:15px;border-radius:12px;
-                        box-shadow:0 2px 10px rgba(0,0,0,0.05);border-left:4px solid #10b981;">
-                        <div style="font-weight:700;color:#1e293b;margin-bottom:8px;">🎨 数字人渲染</div>
-                        <div style="font-size:0.85em;color:#64748b;">
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px;border-radius:12px;
+                        box-shadow:0 2px 10px rgba(0,0,0,0.2);border-left:4px solid #10b981;">
+                        <div style="font-weight:700;color:#ffffff;margin-bottom:8px;">🎨 数字人渲染</div>
+                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);">
                             <div>• Live2D Cubism SDK 4</div>
                             <div>• PixiJS 渲染引擎</div>
                             <div>• iframe 隔离渲染</div>
                         </div>
                     </div>
-                    <div style="background:white;padding:15px;border-radius:12px;
-                        box-shadow:0 2px 10px rgba(0,0,0,0.05);border-left:4px solid #f59e0b;">
-                        <div style="font-weight:700;color:#1e293b;margin-bottom:8px;">🔧 工具系统</div>
-                        <div style="font-size:0.85em;color:#64748b;">
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px;border-radius:12px;
+                        box-shadow:0 2px 10px rgba(0,0,0,0.2);border-left:4px solid #f59e0b;">
+                        <div style="font-weight:700;color:#ffffff;margin-bottom:8px;">🔧 工具系统</div>
+                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);">
                             <div>• 9 种实用工具</div>
                             <div>• 自动意图识别</div>
                             <div>• 统一注册管理</div>
                         </div>
                     </div>
-                    <div style="background:white;padding:15px;border-radius:12px;
-                        box-shadow:0 2px 10px rgba(0,0,0,0.05);border-left:4px solid #8b5cf6;">
-                        <div style="font-weight:700;color:#1e293b;margin-bottom:8px;">💾 数据存储</div>
-                        <div style="font-size:0.85em;color:#64748b;">
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px;border-radius:12px;
+                        box-shadow:0 2px 10px rgba(0,0,0,0.2);border-left:4px solid #8b5cf6;">
+                        <div style="font-weight:700;color:#ffffff;margin-bottom:8px;">💾 数据存储</div>
+                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);">
                             <div>• JSON 文件持久化</div>
                             <div>• 会话历史保存</div>
                             <div>• Soul Memory 记忆</div>
