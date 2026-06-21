@@ -869,53 +869,288 @@ class AivoWebUIV6:
         ::-webkit-scrollbar-thumb:hover {
             background: linear-gradient(135deg, #5568d3, #6a3f8f);
         }
+        /* 动画效果 */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(102,126,234,0.5); }
+            50% { box-shadow: 0 0 20px rgba(102,126,234,0.8); }
+        }
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        .pulse-animation {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .glow-animation {
+            animation: glow 2s ease-in-out infinite;
+        }
+        /* 渐变文字 */
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        /* 卡片悬停效果 */
+        .hover-card {
+            transition: all 0.3s ease;
+        }
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        /* 渐变边框 */
+        .gradient-border {
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+        }
+        .gradient-border::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+            border-radius: inherit;
+            z-index: -1;
+        }
         """
 
-        with gr.Blocks(title="Aivo V6") as interface:
+        with gr.Blocks(title="Aivo V6 - 智能数字人系统") as interface:
 
-            # 顶部横幅 - V6版本特色
+            # ============================================
+            # 顶部横幅 - 项目主题展示
+            # ============================================
             gr.HTML("""
-            <div style="text-align:center;padding:40px 20px;margin-bottom:30px;
-                background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-                border-radius:24px;box-shadow:0 12px 40px rgba(102,126,234,0.5);
+            <div style="text-align:center;padding:50px 30px;margin-bottom:30px;
+                background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+                border-radius:24px;box-shadow:0 15px 50px rgba(0,0,0,0.4);
                 position:relative;overflow:hidden;">
-                <div style="position:absolute;top:-50%;right:-5%;width:300px;height:300px;
-                    background:radial-gradient(circle,rgba(255,255,255,0.1),transparent);
+                <!-- 背景装饰 -->
+                <div style="position:absolute;top:-50%;right:-10%;width:400px;height:400px;
+                    background:radial-gradient(circle,rgba(102,126,234,0.3),transparent);
                     border-radius:50%;"></div>
-                <div style="position:absolute;bottom:-30%;left:-3%;width:250px;height:250px;
-                    background:radial-gradient(circle,rgba(255,255,255,0.08),transparent);
+                <div style="position:absolute;bottom:-40%;left:-5%;width:350px;height:350px;
+                    background:radial-gradient(circle,rgba(118,75,162,0.2),transparent);
                     border-radius:50%;"></div>
+                <div style="position:absolute;top:20%;left:10%;width:200px;height:200px;
+                    background:radial-gradient(circle,rgba(240,147,251,0.15),transparent);
+                    border-radius:50%;"></div>
+
                 <div style="position:relative;z-index:1;">
-                    <div style="font-size:3.2em;font-weight:900;color:white;
-                        text-shadow:3px 3px 8px rgba(0,0,0,0.3);
-                        letter-spacing:-1px;margin-bottom:8px;">
-                        🎀 Aivo 数字人 V6
+                    <!-- Logo 和标题 -->
+                    <div style="font-size:4em;font-weight:900;color:white;
+                        text-shadow:4px 4px 12px rgba(0,0,0,0.5);
+                        letter-spacing:-2px;margin-bottom:15px;">
+                        <span style="background:linear-gradient(135deg,#667eea,#764ba2,#f093fb);
+                            -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+                            🎀 Aivo
+                        </span>
+                        <span style="color:white;margin-left:10px;">数字人 V6</span>
                     </div>
-                    <div style="color:rgba(255,255,255,0.95);margin-top:12px;
-                        font-size:1.2em;font-weight:600;letter-spacing:0.5px;">
-                        ✨ Live2D交互 · 🎵 气泡语音 · 🛠️ 10+工具 · 🎤 8种音色
+
+                    <!-- 副标题 -->
+                    <div style="color:rgba(255,255,255,0.9);margin-top:15px;
+                        font-size:1.3em;font-weight:500;letter-spacing:1px;">
+                        基于 MiMo API 的智能数字人系统
                     </div>
-                    <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-                        <div style="padding:8px 20px;background:rgba(255,255,255,0.2);
-                            border-radius:20px;backdrop-filter:blur(10px);
-                            box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-                            <span style="color:white;font-size:0.9em;font-weight:600;">
-                                🆕 一键发送示例
+
+                    <!-- 技术栈标签 -->
+                    <div style="margin-top:25px;display:flex;gap:15px;justify-content:center;flex-wrap:wrap;">
+                        <div style="padding:10px 24px;background:linear-gradient(135deg,rgba(102,126,234,0.8),rgba(118,75,162,0.8));
+                            border-radius:25px;backdrop-filter:blur(10px);
+                            box-shadow:0 6px 20px rgba(0,0,0,0.3);
+                            border:1px solid rgba(255,255,255,0.2);">
+                            <span style="color:white;font-size:0.95em;font-weight:600;">
+                                🎀 Live2D 数字人
                             </span>
                         </div>
-                        <div style="padding:8px 20px;background:rgba(255,255,255,0.2);
-                            border-radius:20px;backdrop-filter:blur(10px);
-                            box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-                            <span style="color:white;font-size:0.9em;font-weight:600;">
-                                📊 实时统计面板
+                        <div style="padding:10px 24px;background:linear-gradient(135deg,rgba(240,147,251,0.8),rgba(245,87,108,0.8));
+                            border-radius:25px;backdrop-filter:blur(10px);
+                            box-shadow:0 6px 20px rgba(0,0,0,0.3);
+                            border:1px solid rgba(255,255,255,0.2);">
+                            <span style="color:white;font-size:0.95em;font-weight:600;">
+                                🎵 气泡语音
                             </span>
                         </div>
-                        <div style="padding:8px 20px;background:rgba(255,255,255,0.2);
-                            border-radius:20px;backdrop-filter:blur(10px);
-                            box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-                            <span style="color:white;font-size:0.9em;font-weight:600;">
-                                📜 历史导出搜索
+                        <div style="padding:10px 24px;background:linear-gradient(135deg,rgba(79,172,254,0.8),rgba(0,242,254,0.8));
+                            border-radius:25px;backdrop-filter:blur(10px);
+                            box-shadow:0 6px 20px rgba(0,0,0,0.3);
+                            border:1px solid rgba(255,255,255,0.2);">
+                            <span style="color:white;font-size:0.95em;font-weight:600;">
+                                🛠️ 10+ 工具
                             </span>
+                        </div>
+                        <div style="padding:10px 24px;background:linear-gradient(135deg,rgba(250,112,154,0.8),rgba(254,225,64,0.8));
+                            border-radius:25px;backdrop-filter:blur(10px);
+                            box-shadow:0 6px 20px rgba(0,0,0,0.3);
+                            border:1px solid rgba(255,255,255,0.2);">
+                            <span style="color:white;font-size:0.95em;font-weight:600;">
+                                🎤 8 种音色
+                            </span>
+                        </div>
+                        <div style="padding:10px 24px;background:linear-gradient(135deg,rgba(67,56,202,0.8),rgba(139,92,246,0.8));
+                            border-radius:25px;backdrop-filter:blur(10px);
+                            box-shadow:0 6px 20px rgba(0,0,0,0.3);
+                            border:1px solid rgba(255,255,255,0.2);">
+                            <span style="color:white;font-size:0.95em;font-weight:600;">
+                                🧠 Soul Memory
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 系统状态指示 -->
+                    <div style="margin-top:20px;display:flex;gap:20px;justify-content:center;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:10px;height:10px;background:#10b981;border-radius:50%;
+                                box-shadow:0 0 10px rgba(16,185,129,0.8);"></div>
+                            <span style="color:rgba(255,255,255,0.8);font-size:0.85em;">系统运行中</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:10px;height:10px;background:#3b82f6;border-radius:50%;
+                                box-shadow:0 0 10px rgba(59,130,246,0.8);"></div>
+                            <span style="color:rgba(255,255,255,0.8);font-size:0.85em;">MiMo API 已连接</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:10px;height:10px;background:#8b5cf6;border-radius:50%;
+                                box-shadow:0 0 10px rgba(139,92,246,0.8);"></div>
+                            <span style="color:rgba(255,255,255,0.8);font-size:0.85em;">Live2D 已就绪</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """)
+
+            # ============================================
+            # 技术架构展示
+            # ============================================
+            gr.HTML("""
+            <div style="background:linear-gradient(135deg,#f8fafc,#e2e8f0);
+                padding:30px;border-radius:20px;margin-bottom:25px;
+                border:1px solid #e2e8f0;">
+                <div style="text-align:center;margin-bottom:25px;">
+                    <div style="font-size:1.8em;font-weight:800;color:#1e293b;margin-bottom:8px;">
+                        🏗️ 系统架构
+                    </div>
+                    <div style="color:#64748b;font-size:0.95em;">
+                        分层架构设计 · 模块化组件 · 数据流驱动
+                    </div>
+                </div>
+
+                <!-- 架构图 -->
+                <div style="background:white;padding:25px;border-radius:16px;
+                    box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:20px;">
+                    <div style="font-weight:700;color:#4338ca;margin-bottom:15px;font-size:1.1em;">
+                        📊 数据流架构
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <!-- 用户输入 -->
+                        <div style="text-align:center;flex:1;min-width:120px;">
+                            <div style="background:linear-gradient(135deg,#667eea,#764ba2);
+                                padding:15px;border-radius:12px;color:white;">
+                                <div style="font-size:1.5em;margin-bottom:5px;">👤</div>
+                                <div style="font-weight:600;font-size:0.85em;">用户输入</div>
+                                <div style="font-size:0.7em;opacity:0.9;">文本/语音</div>
+                            </div>
+                        </div>
+                        <div style="font-size:1.5em;color:#94a3b8;">→</div>
+                        <!-- ASR -->
+                        <div style="text-align:center;flex:1;min-width:120px;">
+                            <div style="background:linear-gradient(135deg,#10b981,#059669);
+                                padding:15px;border-radius:12px;color:white;">
+                                <div style="font-size:1.5em;margin-bottom:5px;">🎤</div>
+                                <div style="font-weight:600;font-size:0.85em;">ASR 识别</div>
+                                <div style="font-size:0.7em;opacity:0.9;">语音转文本</div>
+                            </div>
+                        </div>
+                        <div style="font-size:1.5em;color:#94a3b8;">→</div>
+                        <!-- LLM -->
+                        <div style="text-align:center;flex:1;min-width:120px;">
+                            <div style="background:linear-gradient(135deg,#f59e0b,#d97706);
+                                padding:15px;border-radius:12px;color:white;">
+                                <div style="font-size:1.5em;margin-bottom:5px;">🧠</div>
+                                <div style="font-weight:600;font-size:0.85em;">LLM 推理</div>
+                                <div style="font-size:0.7em;opacity:0.9;">MiMo Pro</div>
+                            </div>
+                        </div>
+                        <div style="font-size:1.5em;color:#94a3b8;">→</div>
+                        <!-- 工具调用 -->
+                        <div style="text-align:center;flex:1;min-width:120px;">
+                            <div style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);
+                                padding:15px;border-radius:12px;color:white;">
+                                <div style="font-size:1.5em;margin-bottom:5px;">🛠️</div>
+                                <div style="font-weight:600;font-size:0.85em;">工具调用</div>
+                                <div style="font-size:0.7em;opacity:0.9;">9种工具</div>
+                            </div>
+                        </div>
+                        <div style="font-size:1.5em;color:#94a3b8;">→</div>
+                        <!-- TTS -->
+                        <div style="text-align:center;flex:1;min-width:120px;">
+                            <div style="background:linear-gradient(135deg,#ec4899,#db2777);
+                                padding:15px;border-radius:12px;color:white;">
+                                <div style="font-size:1.5em;margin-bottom:5px;">🎵</div>
+                                <div style="font-weight:600;font-size:0.85em;">TTS 合成</div>
+                                <div style="font-size:0.7em;opacity:0.9;">8种音色</div>
+                            </div>
+                        </div>
+                        <div style="font-size:1.5em;color:#94a3b8;">→</div>
+                        <!-- 输出 -->
+                        <div style="text-align:center;flex:1;min-width:120px;">
+                            <div style="background:linear-gradient(135deg,#3b82f6,#2563eb);
+                                padding:15px;border-radius:12px;color:white;">
+                                <div style="font-size:1.5em;margin-bottom:5px;">🎀</div>
+                                <div style="font-weight:600;font-size:0.85em;">数字人</div>
+                                <div style="font-size:0.7em;opacity:0.9;">Live2D</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 技术栈 -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;">
+                    <div style="background:white;padding:15px;border-radius:12px;
+                        box-shadow:0 2px 10px rgba(0,0,0,0.05);border-left:4px solid #667eea;">
+                        <div style="font-weight:700;color:#1e293b;margin-bottom:8px;">🤖 AI 模型</div>
+                        <div style="font-size:0.85em;color:#64748b;">
+                            <div>• MiMo v2.5 Pro (1T 参数)</div>
+                            <div>• Function Calling 支持</div>
+                            <div>• 结构化 JSON 响应</div>
+                        </div>
+                    </div>
+                    <div style="background:white;padding:15px;border-radius:12px;
+                        box-shadow:0 2px 10px rgba(0,0,0,0.05);border-left:4px solid #10b981;">
+                        <div style="font-weight:700;color:#1e293b;margin-bottom:8px;">🎨 数字人渲染</div>
+                        <div style="font-size:0.85em;color:#64748b;">
+                            <div>• Live2D Cubism SDK 4</div>
+                            <div>• PixiJS 渲染引擎</div>
+                            <div>• iframe 隔离渲染</div>
+                        </div>
+                    </div>
+                    <div style="background:white;padding:15px;border-radius:12px;
+                        box-shadow:0 2px 10px rgba(0,0,0,0.05);border-left:4px solid #f59e0b;">
+                        <div style="font-weight:700;color:#1e293b;margin-bottom:8px;">🔧 工具系统</div>
+                        <div style="font-size:0.85em;color:#64748b;">
+                            <div>• 9 种实用工具</div>
+                            <div>• 自动意图识别</div>
+                            <div>• 统一注册管理</div>
+                        </div>
+                    </div>
+                    <div style="background:white;padding:15px;border-radius:12px;
+                        box-shadow:0 2px 10px rgba(0,0,0,0.05);border-left:4px solid #8b5cf6;">
+                        <div style="font-weight:700;color:#1e293b;margin-bottom:8px;">💾 数据存储</div>
+                        <div style="font-size:0.85em;color:#64748b;">
+                            <div>• JSON 文件持久化</div>
+                            <div>• 会话历史保存</div>
+                            <div>• Soul Memory 记忆</div>
                         </div>
                     </div>
                 </div>
@@ -1239,51 +1474,196 @@ class AivoWebUIV6:
                             show_label=False
                         )
 
-            # 底部信息 - 更有特色
-            gr.Markdown("""
-            <div style="text-align:center;margin-top:30px;padding:24px;
-                background:linear-gradient(135deg,#e0e7ff,#f3e8ff);
-                border-radius:20px;border:2px solid #c7d2fe;">
-                <div style="font-size:1.3em;font-weight:800;color:#5b21b6;margin-bottom:16px;">
-                    ✨ Aivo V6 数字人助手
-                </div>
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px;">
-                    <div style="background:white;padding:12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);
-                        transition:transform 0.2s;">
-                        <div style="font-size:1.8em;margin-bottom:6px;">🎀</div>
-                        <div style="font-weight:700;color:#4338ca;font-size:0.9em;">Live2D</div>
-                        <div style="font-size:0.75em;color:#64748b;">3个模型</div>
+            # ============================================
+            # 底部信息 - 技术栈和实现路径
+            # ============================================
+            gr.HTML("""
+            <div style="margin-top:30px;padding:30px;
+                background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+                border-radius:20px;color:white;">
+                <!-- 标题 -->
+                <div style="text-align:center;margin-bottom:25px;">
+                    <div style="font-size:1.8em;font-weight:800;margin-bottom:8px;">
+                        🚀 技术实现
                     </div>
-                    <div style="background:white;padding:12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                        <div style="font-size:1.8em;margin-bottom:6px;">🎵</div>
-                        <div style="font-weight:700;color:#4338ca;font-size:0.9em;">气泡语音</div>
-                        <div style="font-size:0.75em;color:#64748b;">内嵌音频</div>
-                    </div>
-                    <div style="background:white;padding:12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                        <div style="font-size:1.8em;margin-bottom:6px;">🛠️</div>
-                        <div style="font-weight:700;color:#4338ca;font-size:0.9em;">10+工具</div>
-                        <div style="font-size:0.75em;color:#64748b;">全功能</div>
-                    </div>
-                    <div style="background:white;padding:12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                        <div style="font-size:1.8em;margin-bottom:6px;">🎤</div>
-                        <div style="font-weight:700;color:#4338ca;font-size:0.9em;">8种音色</div>
-                        <div style="font-size:0.75em;color:#64748b;">中英双语</div>
+                    <div style="color:rgba(255,255,255,0.7);font-size:0.95em;">
+                        完整的技术栈和实现路径
                     </div>
                 </div>
-                <div style="margin-top:18px;padding:12px;background:rgba(255,255,255,0.6);
-                    border-radius:12px;backdrop-filter:blur(10px);">
-                    <div style="font-size:0.9em;color:#4338ca;font-weight:600;margin-bottom:8px;">
-                        🚀 快速上手
+
+                <!-- 实现路径 -->
+                <div style="background:rgba(255,255,255,0.1);padding:20px;border-radius:16px;
+                    margin-bottom:20px;backdrop-filter:blur(10px);">
+                    <div style="font-weight:700;margin-bottom:15px;font-size:1.1em;">
+                        📍 实现路径
                     </div>
-                    <div style="font-size:0.8em;color:#6b7280;line-height:1.6;">
-                        💡 点击右侧"快速示例"立即体验 | 🔧 "可用工具"查看所有功能<br>
-                        📜 "历史管理"可导出和搜索对话 | 📊 实时统计面板显示详细数据
+                    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                        <div style="text-align:center;flex:1;min-width:100px;">
+                            <div style="background:linear-gradient(135deg,#667eea,#764ba2);
+                                padding:12px;border-radius:10px;margin-bottom:8px;">
+                                <div style="font-size:1.3em;">1️⃣</div>
+                            </div>
+                            <div style="font-weight:600;font-size:0.85em;">需求分析</div>
+                            <div style="font-size:0.7em;color:rgba(255,255,255,0.7);">功能规划</div>
+                        </div>
+                        <div style="font-size:1.2em;color:rgba(255,255,255,0.5);align-self:center;">→</div>
+                        <div style="text-align:center;flex:1;min-width:100px;">
+                            <div style="background:linear-gradient(135deg,#10b981,#059669);
+                                padding:12px;border-radius:10px;margin-bottom:8px;">
+                                <div style="font-size:1.3em;">2️⃣</div>
+                            </div>
+                            <div style="font-weight:600;font-size:0.85em;">架构设计</div>
+                            <div style="font-size:0.7em;color:rgba(255,255,255,0.7);">分层设计</div>
+                        </div>
+                        <div style="font-size:1.2em;color:rgba(255,255,255,0.5);align-self:center;">→</div>
+                        <div style="text-align:center;flex:1;min-width:100px;">
+                            <div style="background:linear-gradient(135deg,#f59e0b,#d97706);
+                                padding:12px;border-radius:10px;margin-bottom:8px;">
+                                <div style="font-size:1.3em;">3️⃣</div>
+                            </div>
+                            <div style="font-weight:600;font-size:0.85em;">核心开发</div>
+                            <div style="font-size:0.7em;color:rgba(255,255,255,0.7);">模块实现</div>
+                        </div>
+                        <div style="font-size:1.2em;color:rgba(255,255,255,0.5);align-self:center;">→</div>
+                        <div style="text-align:center;flex:1;min-width:100px;">
+                            <div style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);
+                                padding:12px;border-radius:10px;margin-bottom:8px;">
+                                <div style="font-size:1.3em;">4️⃣</div>
+                            </div>
+                            <div style="font-weight:600;font-size:0.85em;">集成测试</div>
+                            <div style="font-size:0.7em;color:rgba(255,255,255,0.7);">功能验证</div>
+                        </div>
+                        <div style="font-size:1.2em;color:rgba(255,255,255,0.5);align-self:center;">→</div>
+                        <div style="text-align:center;flex:1;min-width:100px;">
+                            <div style="background:linear-gradient(135deg,#ec4899,#db2777);
+                                padding:12px;border-radius:10px;margin-bottom:8px;">
+                                <div style="font-size:1.3em;">5️⃣</div>
+                            </div>
+                            <div style="font-weight:600;font-size:0.85em;">UI 优化</div>
+                            <div style="font-size:0.7em;color:rgba(255,255,255,0.7);">用户体验</div>
+                        </div>
+                        <div style="font-size:1.2em;color:rgba(255,255,255,0.5);align-self:center;">→</div>
+                        <div style="text-align:center;flex:1;min-width:100px;">
+                            <div style="background:linear-gradient(135deg,#3b82f6,#2563eb);
+                                padding:12px;border-radius:10px;margin-bottom:8px;">
+                                <div style="font-size:1.3em;">6️⃣</div>
+                            </div>
+                            <div style="font-weight:600;font-size:0.85em;">部署上线</div>
+                            <div style="font-size:0.7em;color:rgba(255,255,255,0.7);">生产就绪</div>
+                        </div>
                     </div>
                 </div>
-                <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e0e7ff;">
-                    <small style="color:#9ca3af;font-size:0.75em;">
-                        Powered by Claude 4 · Live2D · Fish Audio TTS
-                    </small>
+
+                <!-- 技术栈详情 -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;margin-bottom:20px;">
+                    <div style="background:rgba(255,255,255,0.1);padding:15px;border-radius:12px;
+                        border:1px solid rgba(255,255,255,0.1);">
+                        <div style="font-weight:700;margin-bottom:10px;font-size:1em;">
+                            🐍 后端技术
+                        </div>
+                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);line-height:1.8;">
+                            <div>• <b>Python 3.8+</b> - 核心语言</div>
+                            <div>• <b>OpenAI SDK</b> - API 调用</div>
+                            <div>• <b>Gradio</b> - Web 界面</div>
+                            <div>• <b>PyAudio</b> - 音频处理</div>
+                            <div>• <b>Pillow</b> - 图像处理</div>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.1);padding:15px;border-radius:12px;
+                        border:1px solid rgba(255,255,255,0.1);">
+                        <div style="font-weight:700;margin-bottom:10px;font-size:1em;">
+                            🤖 AI 服务
+                        </div>
+                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);line-height:1.8;">
+                            <div>• <b>MiMo v2.5 Pro</b> - LLM 推理</div>
+                            <div>• <b>MiMo TTS</b> - 语音合成</div>
+                            <div>• <b>MiMo ASR</b> - 语音识别</div>
+                            <div>• <b>Function Calling</b> - 工具调用</div>
+                            <div>• <b>情感分析</b> - 情感识别</div>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.1);padding:15px;border-radius:12px;
+                        border:1px solid rgba(255,255,255,0.1);">
+                        <div style="font-weight:700;margin-bottom:10px;font-size:1em;">
+                            🎨 前端技术
+                        </div>
+                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);line-height:1.8;">
+                            <div>• <b>Live2D Cubism 4</b> - 数字人渲染</div>
+                            <div>• <b>PixiJS</b> - 2D 渲染引擎</div>
+                            <div>• <b>HTML/CSS/JS</b> - 界面开发</div>
+                            <div>• <b>Gradio Blocks</b> - 组件系统</div>
+                            <div>• <b>postMessage</b> - 跨窗口通信</div>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.1);padding:15px;border-radius:12px;
+                        border:1px solid rgba(255,255,255,0.1);">
+                        <div style="font-weight:700;margin-bottom:10px;font-size:1em;">
+                            💾 数据存储
+                        </div>
+                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);line-height:1.8;">
+                            <div>• <b>JSON 文件</b> - 持久化存储</div>
+                            <div>• <b>Soul Memory</b> - 记忆系统</div>
+                            <div>• <b>会话管理</b> - 历史保存</div>
+                            <div>• <b>导出/导入</b> - 数据备份</div>
+                            <div>• <b>隐私保护</b> - 本地存储</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 核心特性 -->
+                <div style="background:rgba(255,255,255,0.1);padding:20px;border-radius:16px;
+                    border:1px solid rgba(255,255,255,0.1);">
+                    <div style="font-weight:700;margin-bottom:15px;font-size:1.1em;">
+                        ✨ 核心特性
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:8px;height:8px;background:#10b981;border-radius:50%;"></div>
+                            <span style="font-size:0.9em;">完全云端化架构，0 显存占用</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:8px;height:8px;background:#3b82f6;border-radius:50%;"></div>
+                            <span style="font-size:0.9em;">Live2D 数字人，真实口型同步</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:8px;height:8px;background:#8b5cf6;border-radius:50%;"></div>
+                            <span style="font-size:0.9em;">9 种工具，自动意图识别</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:8px;height:8px;background:#ec4899;border-radius:50%;"></div>
+                            <span style="font-size:0.9em;">8 种音色，情感智能匹配</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:8px;height:8px;background:#f59e0b;border-radius:50%;"></div>
+                            <span style="font-size:0.9em;">会话持久化，多会话管理</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:8px;height:8px;background:#14b8a6;border-radius:50%;"></div>
+                            <span style="font-size:0.9em;">Soul Memory，个性化定制</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:8px;height:8px;background:#f97316;border-radius:50%;"></div>
+                            <span style="font-size:0.9em;">实时统计，数据可视化</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:8px;height:8px;background:#06b6d4;border-radius:50%;"></div>
+                            <span style="font-size:0.9em;">成本可控，约 ¥1.5/小时</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 版权信息 -->
+                <div style="text-align:center;margin-top:25px;padding-top:20px;
+                    border-top:1px solid rgba(255,255,255,0.15);">
+                    <div style="color:rgba(255,255,255,0.6);font-size:0.85em;">
+                        <b>Aivo V6</b> - 基于小米 MiMo API 的智能数字人系统
+                    </div>
+                    <div style="color:rgba(255,255,255,0.4);font-size:0.75em;margin-top:8px;">
+                        Powered by MiMo API · Live2D Cubism SDK · Gradio
+                    </div>
+                    <div style="color:rgba(255,255,255,0.3);font-size:0.7em;margin-top:5px;">
+                        Version 6.0 | 最后更新：2026-06-21 | MIT License
+                    </div>
                 </div>
             </div>
             """)
@@ -1609,26 +1989,41 @@ class AivoWebUIV6:
 
 def main():
     """启动Web界面"""
-    print("=" * 60)
-    print("🚀 Aivo V6 启动中...")
-    print("=" * 60)
-    print("\n✨ V6 新特性：")
-    print("  ✓ Live2D数字人（iframe加载，可点击切换）")
-    print("  ✓ 语音内嵌在对话气泡中（自动播放）")
-    print("  ✓ 10+实用工具（天气/搜索/翻译/计算等）")
-    print("  ✓ 8种音色选择（中英双语）")
-    print("  ✓ 一键发送快速示例（无需手动发送）")
-    print("  ✓ 实时统计面板（响应时间、情感分布等）")
-    print("  ✓ 历史管理（导出JSON、搜索对话）")
-    print("  ✓ 全新UI设计（更美观易用）")
+    print("=" * 70)
+    print("🎀 Aivo V6 - 智能数字人系统")
+    print("   基于小米 MiMo API 的智能数字人系统")
+    print("=" * 70)
+    print("\n🏗️ 系统架构：")
+    print("  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐")
+    print("  │  用户输入   │ → │  ASR 识别   │ → │  LLM 推理   │")
+    print("  └─────────────┘    └─────────────┘    └─────────────┘")
+    print("                                            ↓")
+    print("  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐")
+    print("  │   输出展示   │ ← │  TTS 合成   │ ← │  工具调用   │")
+    print("  └─────────────┘    └─────────────┘    └─────────────┘")
+    print("\n✨ 核心特性：")
+    print("  🎀 Live2D 数字人  │ 3 个模型可切换，语音同步动画")
+    print("  🎵 气泡语音       │ 音频嵌入对话气泡，自动播放")
+    print("  🛠️ 9 种工具       │ 天气、搜索、翻译、计算、新闻等")
+    print("  🎤 8 种音色       │ 中英文男女声，情感智能匹配")
+    print("  📊 实时统计       │ 对话轮次、响应时间、情感分布")
+    print("  📜 会话管理       │ 持久化存储、多会话切换、历史搜索")
+    print("  🧠 Soul Memory   │ 人格设定、用户画像、技能管理")
+    print("\n🔧 技术栈：")
+    print("  • Python 3.8+    │ 后端开发语言")
+    print("  • Gradio         │ Web 界面框架")
+    print("  • MiMo API       │ AI 模型服务")
+    print("  • Live2D         │ 数字人渲染")
+    print("  • PixiJS         │ 2D 渲染引擎")
     print("\n💡 使用提示：")
-    print("  - Live2D在右侧显示，点击可切换模型（3个模型循环）")
-    print("  - 播放语音时Live2D会自动说话")
-    print("  - 点击\"快速示例\"按钮立即发送，无需手动输入")
-    print("  - 支持语音输入和文本输入")
-    print("  - 可导出对话历史为JSON文件")
-    print("  - 实时查看统计数据和情感分布")
-    print("\n" + "=" * 60)
+    print("  • Live2D 在右侧显示，点击可切换模型")
+    print("  • 播放语音时 Live2D 会自动说话")
+    print("  • 点击\"快速示例\"按钮立即发送")
+    print("  • 支持语音输入和文本输入")
+    print("  • 可导出对话历史为 JSON 文件")
+    print("  • Soul Memory 可自定义 AI 人格")
+    print("\n🚀 启动中...")
+    print("=" * 70)
 
     ui = AivoWebUIV6()
     interface = ui.build_interface()
