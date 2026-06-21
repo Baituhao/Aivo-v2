@@ -1165,37 +1165,37 @@ class AivoWebUIV6:
                     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px;border-radius:12px;
                         box-shadow:0 2px 10px rgba(0,0,0,0.2);border-left:4px solid #667eea;">
                         <div style="font-weight:700;color:#ffffff;margin-bottom:8px;">🤖 AI 模型</div>
-                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);">
-                            <div>• MiMo v2.5 Pro (1T 参数)</div>
-                            <div>• Function Calling 支持</div>
-                            <div>• 结构化 JSON 响应</div>
+                        <div style="font-size:0.85em;">
+                            <div style="color:#ffffff;">• MiMo v2.5 Pro (1T 参数)</div>
+                            <div style="color:#ffffff;">• Function Calling 支持</div>
+                            <div style="color:#ffffff;">• 结构化 JSON 响应</div>
                         </div>
                     </div>
                     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px;border-radius:12px;
                         box-shadow:0 2px 10px rgba(0,0,0,0.2);border-left:4px solid #10b981;">
                         <div style="font-weight:700;color:#ffffff;margin-bottom:8px;">🎨 数字人渲染</div>
-                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);">
-                            <div>• Live2D Cubism SDK 4</div>
-                            <div>• PixiJS 渲染引擎</div>
-                            <div>• iframe 隔离渲染</div>
+                        <div style="font-size:0.85em;">
+                            <div style="color:#ffffff;">• Live2D Cubism SDK 4</div>
+                            <div style="color:#ffffff;">• PixiJS 渲染引擎</div>
+                            <div style="color:#ffffff;">• iframe 隔离渲染</div>
                         </div>
                     </div>
                     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px;border-radius:12px;
                         box-shadow:0 2px 10px rgba(0,0,0,0.2);border-left:4px solid #f59e0b;">
                         <div style="font-weight:700;color:#ffffff;margin-bottom:8px;">🔧 工具系统</div>
-                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);">
-                            <div>• 9 种实用工具</div>
-                            <div>• 自动意图识别</div>
-                            <div>• 统一注册管理</div>
+                        <div style="font-size:0.85em;">
+                            <div style="color:#ffffff;">• 9 种实用工具</div>
+                            <div style="color:#ffffff;">• 自动意图识别</div>
+                            <div style="color:#ffffff;">• 统一注册管理</div>
                         </div>
                     </div>
                     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px;border-radius:12px;
                         box-shadow:0 2px 10px rgba(0,0,0,0.2);border-left:4px solid #8b5cf6;">
                         <div style="font-weight:700;color:#ffffff;margin-bottom:8px;">💾 数据存储</div>
-                        <div style="font-size:0.85em;color:rgba(255,255,255,0.8);">
-                            <div>• JSON 文件持久化</div>
-                            <div>• 会话历史保存</div>
-                            <div>• Soul Memory 记忆</div>
+                        <div style="font-size:0.85em;">
+                            <div style="color:#ffffff;">• JSON 文件持久化</div>
+                            <div style="color:#ffffff;">• 会话历史保存</div>
+                            <div style="color:#ffffff;">• Soul Memory 记忆</div>
                         </div>
                     </div>
                 </div>
@@ -1623,12 +1623,12 @@ class AivoWebUIV6:
                         <div style="font-weight:800;margin-bottom:12px;font-size:1.1em;color:#ffffff;">
                             🐍 后端技术
                         </div>
-                        <div style="font-size:0.9em;color:rgba(255,255,255,0.9);line-height:2;">
-                            <div>• <b style="color:#60a5fa;">Python 3.8+</b> - 核心语言</div>
-                            <div>• <b style="color:#60a5fa;">OpenAI SDK</b> - API 调用</div>
-                            <div>• <b style="color:#60a5fa;">Gradio</b> - Web 界面</div>
-                            <div>• <b style="color:#60a5fa;">PyAudio</b> - 音频处理</div>
-                            <div>• <b style="color:#60a5fa;">Pillow</b> - 图像处理</div>
+                        <div style="font-size:0.9em;line-height:2;">
+                            <div style="color:#ffffff;">• <b style="color:#60a5fa;">Python 3.8+</b> - 核心语言</div>
+                            <div style="color:#ffffff;">• <b style="color:#60a5fa;">OpenAI SDK</b> - API 调用</div>
+                            <div style="color:#ffffff;">• <b style="color:#60a5fa;">Gradio</b> - Web 界面</div>
+                            <div style="color:#ffffff;">• <b style="color:#60a5fa;">PyAudio</b> - 音频处理</div>
+                            <div style="color:#ffffff;">• <b style="color:#60a5fa;">Pillow</b> - 图像处理</div>
                         </div>
                     </div>
                     <div style="background:rgba(255,255,255,0.12);padding:20px;border-radius:14px;
@@ -1637,12 +1637,12 @@ class AivoWebUIV6:
                         <div style="font-weight:800;margin-bottom:12px;font-size:1.1em;color:#ffffff;">
                             🤖 AI 服务
                         </div>
-                        <div style="font-size:0.9em;color:rgba(255,255,255,0.9);line-height:2;">
-                            <div>• <b style="color:#a78bfa;">MiMo v2.5 Pro</b> - LLM 推理</div>
-                            <div>• <b style="color:#a78bfa;">MiMo TTS</b> - 语音合成</div>
-                            <div>• <b style="color:#a78bfa;">MiMo ASR</b> - 语音识别</div>
-                            <div>• <b style="color:#a78bfa;">Function Calling</b> - 工具调用</div>
-                            <div>• <b style="color:#a78bfa;">情感分析</b> - 情感识别</div>
+                        <div style="font-size:0.9em;line-height:2;">
+                            <div style="color:#ffffff;">• <b style="color:#a78bfa;">MiMo v2.5 Pro</b> - LLM 推理</div>
+                            <div style="color:#ffffff;">• <b style="color:#a78bfa;">MiMo TTS</b> - 语音合成</div>
+                            <div style="color:#ffffff;">• <b style="color:#a78bfa;">MiMo ASR</b> - 语音识别</div>
+                            <div style="color:#ffffff;">• <b style="color:#a78bfa;">Function Calling</b> - 工具调用</div>
+                            <div style="color:#ffffff;">• <b style="color:#a78bfa;">情感分析</b> - 情感识别</div>
                         </div>
                     </div>
                     <div style="background:rgba(255,255,255,0.12);padding:20px;border-radius:14px;
@@ -1651,12 +1651,12 @@ class AivoWebUIV6:
                         <div style="font-weight:800;margin-bottom:12px;font-size:1.1em;color:#ffffff;">
                             🎨 前端技术
                         </div>
-                        <div style="font-size:0.9em;color:rgba(255,255,255,0.9);line-height:2;">
-                            <div>• <b style="color:#f472b6;">Live2D Cubism 4</b> - 数字人渲染</div>
-                            <div>• <b style="color:#f472b6;">PixiJS</b> - 2D 渲染引擎</div>
-                            <div>• <b style="color:#f472b6;">HTML/CSS/JS</b> - 界面开发</div>
-                            <div>• <b style="color:#f472b6;">Gradio Blocks</b> - 组件系统</div>
-                            <div>• <b style="color:#f472b6;">postMessage</b> - 跨窗口通信</div>
+                        <div style="font-size:0.9em;line-height:2;">
+                            <div style="color:#ffffff;">• <b style="color:#f472b6;">Live2D Cubism 4</b> - 数字人渲染</div>
+                            <div style="color:#ffffff;">• <b style="color:#f472b6;">PixiJS</b> - 2D 渲染引擎</div>
+                            <div style="color:#ffffff;">• <b style="color:#f472b6;">HTML/CSS/JS</b> - 界面开发</div>
+                            <div style="color:#ffffff;">• <b style="color:#f472b6;">Gradio Blocks</b> - 组件系统</div>
+                            <div style="color:#ffffff;">• <b style="color:#f472b6;">postMessage</b> - 跨窗口通信</div>
                         </div>
                     </div>
                     <div style="background:rgba(255,255,255,0.12);padding:20px;border-radius:14px;
@@ -1665,12 +1665,12 @@ class AivoWebUIV6:
                         <div style="font-weight:800;margin-bottom:12px;font-size:1.1em;color:#ffffff;">
                             💾 数据存储
                         </div>
-                        <div style="font-size:0.9em;color:rgba(255,255,255,0.9);line-height:2;">
-                            <div>• <b style="color:#34d399;">JSON 文件</b> - 持久化存储</div>
-                            <div>• <b style="color:#34d399;">Soul Memory</b> - 记忆系统</div>
-                            <div>• <b style="color:#34d399;">会话管理</b> - 历史保存</div>
-                            <div>• <b style="color:#34d399;">导出/导入</b> - 数据备份</div>
-                            <div>• <b style="color:#34d399;">隐私保护</b> - 本地存储</div>
+                        <div style="font-size:0.9em;line-height:2;">
+                            <div style="color:#ffffff;">• <b style="color:#34d399;">JSON 文件</b> - 持久化存储</div>
+                            <div style="color:#ffffff;">• <b style="color:#34d399;">Soul Memory</b> - 记忆系统</div>
+                            <div style="color:#ffffff;">• <b style="color:#34d399;">会话管理</b> - 历史保存</div>
+                            <div style="color:#ffffff;">• <b style="color:#34d399;">导出/导入</b> - 数据备份</div>
+                            <div style="color:#ffffff;">• <b style="color:#34d399;">隐私保护</b> - 本地存储</div>
                         </div>
                     </div>
                 </div>
