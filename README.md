@@ -1,10 +1,53 @@
-# Aivo V6 - 智能数字人系统
+<div align="center">
 
-> **版本**: V6.0 | **最后更新**: 2026-06-21 | **状态**: 生产就绪
+# 🎀 Aivo V6 - 智能数字人系统
 
-基于小米 MiMo API 的智能数字人系统，集成 **Live2D 数字人**、**多模态交互**、**会话管理**和 **Soul Memory 灵魂记忆系统**。
+**基于小米 MiMo API 的智能数字人系统**
 
-**GitHub**: https://github.com/Baituhao/Aivo-v2
+[![Python](https://img.shields.io/badge/Python-3.8+-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Gradio](https://img.shields.io/badge/Gradio-4.x-orange?style=for-the-badge&logo=gradio&logoColor=white)](https://gradio.app/)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/Baituhao/Aivo-v2?style=for-the-badge&logo=github)](https://github.com/Baituhao/Aivo-v2/stargazers)
+
+---
+
+### ✨ 核心特性
+
+`Live2D 数字人` · `气泡语音` · `9 种工具` · `8 种音色` · `实时统计` · `会话管理` · `Soul Memory`
+
+---
+
+**Live2D 数字人** | **多模态交互** | **会话管理** | **灵魂记忆**
+:---:|:---:|:---:|:---:
+🎀 3 个模型可切换 | 🎤 语音输入输出 | 📜 持久化存储 | 🧠 人格设定
+语音同步动画 | 🎵 气泡音频 | 📊 跨会话搜索 | 👤 用户画像
+点击切换模型 | 🛠️ 工具调用 | 💾 导入导出 | 🛠️ 技能管理
+
+---
+
+### 🚀 快速体验
+
+```bash
+git clone https://github.com/Baituhao/Aivo-v2.git
+cd Aivo-v2
+pip install -r requirements.txt
+python src/web_ui_v6.py
+```
+
+</div>
+
+---
+
+## 📑 目录
+
+- [核心特性](#-核心特性)
+- [快速开始](#-快速开始)
+- [功能详解](#-功能详解)
+- [系统架构](#-系统架构)
+- [技术栈](#-技术栈)
+- [项目结构](#-项目结构)
+- [文档](#-文档)
+- [License](#-license)
 
 ---
 
@@ -24,7 +67,14 @@
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/Baituhao/Aivo-v2.git
+cd Aivo-v2
+```
+
+### 2. 安装依赖
 
 ```bash
 # 使用 conda（推荐）
@@ -36,20 +86,44 @@ pip install -r requirements.txt
 pip install openai python-dotenv pyaudio requests gradio pillow
 ```
 
-### 2. 配置 API 密钥
+### 3. 配置 API 密钥
 
 ```bash
 cp .env.example .env
 # 编辑 .env 文件，填入 MIMO_API_KEY
 ```
 
-### 3. 启动服务
+### 4. 启动服务
 
 ```bash
 python src/web_ui_v6.py
 ```
 
 浏览器自动打开 `http://localhost:7860`
+
+---
+
+## 🏗️ 系统架构
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          用户界面层                                  │
+│              Gradio Web UI + HTML/CSS/JavaScript                    │
+├─────────────────────────────────────────────────────────────────────┤
+│                          应用逻辑层                                  │
+│     会话管理器    │    Soul Memory    │    统计引擎    │    UI 渲染   │
+├─────────────────────────────────────────────────────────────────────┤
+│                          服务层                                      │
+│    LLM 服务      │    TTS 服务       │    ASR 服务    │   工具系统   │
+├─────────────────────────────────────────────────────────────────────┤
+│                          数据层                                      │
+│         MiMo API          │         JSON 文件存储                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**数据流**:
+- **文本路径**: 用户输入 → LLM 推理 → 工具调用 → TTS 合成 → 数字人输出
+- **语音路径**: 语音输入 → ASR 识别 → LLM 推理 → 工具调用 → TTS 合成 → 数字人输出
 
 ---
 
@@ -292,7 +366,7 @@ Aivo：[调用天气工具] 北京今天晴，温度 25 度，很适合出门呢
 
 ## 📄 License
 
-MIT
+MIT License - 详见 [LICENSE](LICENSE)
 
 ---
 
@@ -304,6 +378,19 @@ MIT
 
 ---
 
+<div align="center">
+
+### 🌟 如果觉得不错，请给个 Star 支持一下！
+
+[![GitHub Stars](https://img.shields.io/github/stars/Baituhao/Aivo-v2?style=social)](https://github.com/Baituhao/Aivo-v2/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/Baituhao/Aivo-v2?style=social)](https://github.com/Baituhao/Aivo-v2/network/members)
+
+---
+
 **Aivo V6 - 更智能的数字人助手** 🎀
 
-更智能 · 更贴心 · 更个性化
+*更智能 · 更贴心 · 更个性化*
+
+![Visitors](https://api.visitorbadge.io/api/visitors?path=Baituhao%2FAivo-v2&countColor=%2337d67a&style=flat)
+
+</div>
