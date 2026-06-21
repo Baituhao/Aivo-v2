@@ -180,6 +180,21 @@ class LLMServiceWithTools:
         """清空对话历史"""
         self.conversation_history = []
 
+    def add_to_history(self, role: str, content: str):
+        """添加消息到对话历史"""
+        self.conversation_history.append({
+            "role": role,
+            "content": content
+        })
+
+    def get_history(self) -> List[Dict]:
+        """获取对话历史"""
+        return self.conversation_history
+
+    def set_history(self, history: List[Dict]):
+        """设置对话历史"""
+        self.conversation_history = history
+
 
 # 测试代码
 if __name__ == "__main__":
