@@ -1827,12 +1827,12 @@ class AivoWebUIV6:
                     return None, self._format_stats(), "请先选择会话", None
 
                 # 从显示文本中提取时间戳，再从时间戳推导出 session_id
-                # 格式：💬 "消息..." (5条) - 2025-06-21 14:30
+                # 格式：💬 "消息..." (5条) - 2025-06-21 14:30:25
                 try:
                     # 提取最后的时间部分
-                    time_part = choice.split(" - ")[-1]  # "2025-06-21 14:30"
-                    # 转换为 session_id 格式 20250621_1430
-                    session_id = time_part.replace("-", "").replace(":", "").replace(" ", "_")[:13]
+                    time_part = choice.split(" - ")[-1]  # "2025-06-21 14:30:25"
+                    # 转换为 session_id 格式 20250621_143025
+                    session_id = time_part.replace("-", "").replace(":", "").replace(" ", "_")
 
                     # 尝试加载
                     result = self.load_session(session_id)
