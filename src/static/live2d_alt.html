@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live2D - Alternative</title>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: linear-gradient(160deg, #e0e7ff 0%, #f3e8ff 100%);
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+#live2d-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#live2dcanvas {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(calc(-50% + 130px));
+    cursor: pointer;
+}
+
+#loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #a78bfa;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#loading::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e0e7ff;
+    border-top-color: #a78bfa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#status {
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: #8b5cf6;
+    font-weight: 500;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    margin: 0 20px;
+}
+
+#error {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 80%;
+    font-size: 14px;
+}
+
+/* 说话时的视觉效果 */
+.speaking {
+    animation: speaking-pulse 0.6s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.8)) brightness(1.1);
+    transform: translateX(calc(-50% + 130px)) scale(1.02) !important;
+}
+
+@keyframes speaking-pulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.8)) brightness(1.1);
+    }
+    50% {
+        filter: drop-shadow(0 0 30px rgba(102, 126, 234, 1)) brightness(1.15);
+    }
+}
+</style>
+</head>
+<body>
+<div id="live2d-container">
+    <div id="loading">✨ 加载Live2D中</div>
+    <div id="status">准备中...</div>
+    <div id="error"></div>
+</div>
+
+<!-- 使用原来的 L2Dwidget，但改进触发方式 -->
+<script src="https://fastly.jsdelivr.net/npm/live2d-widget@3.1.4/lib/L2Dwidget.min.js"></script>
+<script>
+(function() {
+    'use strict';
+
+    console.log('[Live2D Alt] 使用增强视觉效果方案');
+
+    const models = [
+        "https://fastly.jsdelivr.net/npm/live2d-widget-model-shizuku@1.0.5/assets/shizuku.model.json",
+        "https://fastly.jsdelivr.net/npm/live2d-widget-model-hijiki@1.0.5/assets/hijiki.model.json",
+        "https://fastly.jsdelivr.net/npm/live2d-widget-model-tororo@1.0.5/assets/tororo.model.json"
+    ];
+
+    const modelNames = ['Shizuku', 'Hijiki', 'Tororo'];
+    let currentModel = 0;
+    let speakingInterval = null;
+
+    function showError(msg) {
+        const errorEl = document.getElementById('error');
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    function updateStatus(msg) {
+        const statusEl = document.getElementById('status');
+        if (statusEl) statusEl.textContent = msg;
+    }
+
+    function getContainerSize() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const size = Math.min(w * 0.8, h * 0.8, 280);
+        return {
+            width: Math.round(size),
+            height: Math.round(size * 1.35)
+        };
+    }
+
+    function initLive2D() {
+        document.getElementById('loading').style.display = 'flex';
+        updateStatus('正在加载模型...');
+
+        try {
+            if (typeof L2Dwidget === 'undefined') {
+                showError('❌ Live2D库加载失败');
+                return;
+            }
+
+            const { width, height } = getContainerSize();
+
+            L2Dwidget.init({
+                pluginRootPath: "https://fastly.jsdelivr.net/npm/live2d-widget@3.1.4/",
+                pluginJsPath: "lib/",
+                pluginModelPath: "assets/",
+                tagVersion: "UNSAFE_NODE_NOT_DEFINED",
+                debug: false,
+                model: {
+                    jsonPath: models[currentModel],
+                    scale: 1
+                },
+                display: {
+                    superSample: 2,
+                    width: width,
+                    height: height,
+                    position: "center",
+                    hOffset: 300,
+                    vOffset: 100
+                },
+                mobile: {
+                    show: true,
+                    scale: 0.9
+                },
+                react: {
+                    opacityDefault: 1,
+                    opacityOnHover: 0.85
+                }
+            });
+
+            // 等待canvas出现
+            let tries = 0;
+            const maxTries = 30;
+            const checkInterval = setInterval(() => {
+                const canvas = document.getElementById('live2dcanvas');
+                if (canvas) {
+                    clearInterval(checkInterval);
+                    document.getElementById('loading').style.display = 'none';
+                    updateStatus(`✨ ${modelNames[currentModel]} | 准备就绪`);
+                    console.log('[Live2D Alt] 模型加载成功');
+                } else if (tries++ >= maxTries) {
+                    clearInterval(checkInterval);
+                    showError('❌ 模型加载超时');
+                }
+            }, 300);
+
+        } catch (err) {
+            console.error('[Live2D Alt] 初始化错误:', err);
+            showError('❌ 初始化失败: ' + err.message);
+        }
+    }
+
+    // 监听父页面消息 - 使用增强视觉效果
+    window.addEventListener('message', function(e) {
+        console.log('[Live2D Alt] 📩 收到消息:', e.data);
+
+        const canvas = document.getElementById('live2dcanvas');
+        if (!canvas) return;
+
+        if (e.data && e.data.toString().startsWith('speaking')) {
+            console.log('[Live2D Alt] 🎤 开始说话（增强视觉效果）');
+            updateStatus('🔊 正在说话...');
+
+            // 添加 speaking 类
+            canvas.classList.add('speaking');
+
+            // 清除之前的定时器
+            if (speakingInterval) {
+                clearInterval(speakingInterval);
+            }
+
+            // 反复尝试触发点击（虽然可能无效，但保留尝试）
+            let clickCount = 0;
+            speakingInterval = setInterval(function() {
+                const rect = canvas.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+
+                const clickEvent = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: x,
+                    clientY: y
+                });
+                canvas.dispatchEvent(clickEvent);
+
+                clickCount++;
+                if (clickCount === 1) {
+                    console.log('[Live2D Alt] 反复触发点击（尝试对口型）');
+                }
+            }, 800);
+
+        } else if (e.data === 'idle') {
+            console.log('[Live2D Alt] 😴 停止说话');
+            updateStatus(`✨ ${modelNames[currentModel]} | 准备就绪`);
+
+            // 移除 speaking 类
+            canvas.classList.remove('speaking');
+
+            // 停止点击
+            if (speakingInterval) {
+                clearInterval(speakingInterval);
+                speakingInterval = null;
+            }
+        }
+    });
+
+    // 页面加载完成后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLive2D);
+    } else {
+        initLive2D();
+    }
+
+})();
+</script>
+</body>
+</html>

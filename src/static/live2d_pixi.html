@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live2D - Pixi</title>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: linear-gradient(160deg, #e0e7ff 0%, #f3e8ff 100%);
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+#canvas-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #a78bfa;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#loading::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e0e7ff;
+    border-top-color: #a78bfa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#status {
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: #8b5cf6;
+    font-weight: 500;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    margin: 0 20px;
+}
+
+#error {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 80%;
+    font-size: 14px;
+}
+</style>
+</head>
+<body>
+<div id="canvas-container">
+    <div id="loading">✨ 加载Live2D中</div>
+    <div id="status">准备中...</div>
+    <div id="error"></div>
+</div>
+
+<!-- Cubism 2 Core -->
+<script src="https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"></script>
+<!-- Cubism 4 Core - 本地文件 -->
+<script src="/file=/Users/kk/Aivo-v2/src/static/live2dcubismcore.min.js"></script>
+<!-- PixiJS v7 -->
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+<!-- Cubism SDK for PixiJS - 使用本地文件 -->
+<script src="/file=/Users/kk/Aivo-v2/src/static/pixi-live2d-display.min.js"></script>
+
+<script>
+(function() {
+    'use strict';
+
+    console.log('[Pixi Live2D] 开始初始化');
+    console.log('[Pixi Live2D] Cubism 2 Core存在:', typeof Live2D !== 'undefined');
+    console.log('[Pixi Live2D] Cubism 4 Core存在:', typeof Live2DCubismCore !== 'undefined');
+    console.log('[Pixi Live2D] PIXI版本:', PIXI.VERSION);
+
+    // 等待脚本加载
+    setTimeout(function() {
+        console.log('[Pixi Live2D] PIXI.live2d存在:', typeof PIXI.live2d !== 'undefined');
+        console.log('[Pixi Live2D] PIXI.live2d.Live2DModel:', PIXI.live2d ? PIXI.live2d.Live2DModel : undefined);
+
+        if (typeof PIXI.live2d === 'undefined' || !PIXI.live2d.Live2DModel) {
+            console.error('[Pixi Live2D] pixi-live2d-display 未正确加载');
+            showError('❌ Live2D库加载失败');
+        } else {
+            console.log('[Pixi Live2D] 库加载成功，准备初始化模型');
+        }
+    }, 200);
+
+    let app = null;
+    let model = null;
+    let speakingInterval = null;
+
+    const modelUrl = 'https://cdn.jsdelivr.net/npm/live2d-widget-model-shizuku@1.0.5/assets/shizuku.model.json';
+
+    function showError(msg) {
+        const errorEl = document.getElementById('error');
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    function updateStatus(msg) {
+        const statusEl = document.getElementById('status');
+        if (statusEl) statusEl.textContent = msg;
+    }
+
+    async function initPixiLive2D() {
+        console.log('[Pixi Live2D] ===== 开始初始化 =====');
+
+        try {
+            console.log('[Pixi Live2D] 步骤1: 创建PixiJS应用');
+
+            // 创建 PixiJS 应用
+            app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0xe0e7ff,
+                backgroundAlpha: 0
+            });
+
+            document.getElementById('canvas-container').appendChild(app.view);
+            console.log('[Pixi Live2D] 步骤2: PixiJS应用创建成功');
+
+            console.log('[Pixi Live2D] 步骤3: 检查 PIXI.live2d');
+            console.log('[Pixi Live2D] PIXI.live2d:', PIXI.live2d);
+
+            if (PIXI.live2d) {
+                console.log('[Pixi Live2D] PIXI.live2d 的所有属性:', Object.keys(PIXI.live2d));
+
+                // 尝试查找所有可能的模型加载方法
+                for (let key in PIXI.live2d) {
+                    if (typeof PIXI.live2d[key] === 'function') {
+                        console.log('[Pixi Live2D] 找到函数:', key);
+                    }
+                    if (typeof PIXI.live2d[key] === 'object' && PIXI.live2d[key] !== null) {
+                        console.log('[Pixi Live2D] 找到对象:', key, '内容:', Object.keys(PIXI.live2d[key]));
+                    }
+                }
+            }
+
+            if (!PIXI.live2d || !PIXI.live2d.Live2DModel) {
+                showError('❌ Live2DModel 未定义\n库可能需要 Cubism 4 runtime');
+                console.error('[Pixi Live2D] Live2DModel 不存在，终止初始化');
+                return;
+            }
+
+            console.log('[Pixi Live2D] 步骤4: 加载模型:', modelUrl);
+            updateStatus('正在加载模型...');
+
+            // 使用正确的 API
+            model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+            console.log('[Pixi Live2D] 步骤5: 模型加载成功');
+
+            // 设置模型位置和缩放
+            model.anchor.set(0.5, 1.0);  // 底部中心为锚点
+            model.position.set(app.view.width / 2, app.view.height - 30);  // 居中
+
+            // 调整缩放 - 适中大小
+            const scale = Math.min(app.view.width / 800, app.view.height / 800) * 0.6;
+            model.scale.set(scale);
+
+            // 添加到舞台
+            app.stage.addChild(model);
+
+            // 启用交互
+            model.interactive = true;
+            model.buttonMode = true;
+
+            // 绑定点击事件
+            model.on('pointertap', () => {
+                console.log('[Pixi Live2D] 用户点击了模型');
+                if (model.internalModel && model.internalModel.motionManager) {
+                    model.motion('tap_body');
+                }
+            });
+
+            // 启用眼睛跟随鼠标
+            if (model.internalModel && model.internalModel.focusController) {
+                console.log('[Pixi Live2D] 启用眼睛跟随鼠标');
+
+                // 监听鼠标移动
+                app.view.addEventListener('mousemove', (event) => {
+                    const rect = app.view.getBoundingClientRect();
+                    const x = (event.clientX - rect.left) / rect.width * 2 - 1;
+                    const y = (event.clientY - rect.top) / rect.height * 2 - 1;
+
+                    // 设置焦点位置
+                    model.internalModel.focusController.focus(x, -y);
+                });
+            }
+
+            console.log('[Pixi Live2D] ✅ 初始化完成');
+
+            // 隐藏加载提示
+            document.getElementById('loading').style.display = 'none';
+            updateStatus('✨ Shizuku | 准备就绪');
+
+            // 测试：打印模型的动作和表情
+            if (model.internalModel && model.internalModel.motionManager) {
+                console.log('[Pixi Live2D] 可用动作组:', Object.keys(model.internalModel.motionManager.definitions));
+            }
+
+            // 禁用模型自带的音频
+            if (PIXI.live2d.config) {
+                PIXI.live2d.config.sound = false;
+                console.log('[Pixi Live2D] 已禁用模型音频');
+            }
+
+        } catch (error) {
+            console.error('[Pixi Live2D] 初始化失败:', error);
+            showError('❌ 初始化失败: ' + error.message);
+        }
+    }
+
+    // 播放说话动作
+    function startSpeaking(emotion) {
+        if (!model) {
+            console.log('[Pixi Live2D] 模型未加载');
+            return;
+        }
+
+        console.log('[Pixi Live2D] 🎤 开始说话，情感:', emotion);
+        updateStatus('🔊 正在说话...');
+
+        // 设置表情
+        if (emotion && model.internalModel && model.internalModel.motionManager) {
+            try {
+                // 情感映射到 Live2D 表情
+                const expressionMap = {
+                    'happy': 'f01',      // 开心
+                    'sad': 'f02',        // 悲伤
+                    'angry': 'f03',      // 生气
+                    'surprised': 'f04',  // 惊讶
+                    'neutral': null      // 中性，不设置表情
+                };
+
+                const expressionName = expressionMap[emotion];
+                if (expressionName) {
+                    model.expression(expressionName);
+                    console.log('[Pixi Live2D] 设置表情:', expressionName, '(', emotion, ')');
+                }
+            } catch (e) {
+                console.log('[Pixi Live2D] 设置表情失败:', e.message);
+            }
+        }
+
+        // 清除之前的定时器
+        if (speakingInterval) {
+            clearInterval(speakingInterval);
+        }
+
+        // 反复播放 tap_body 动作
+        let count = 0;
+        speakingInterval = setInterval(() => {
+            if (model && model.internalModel) {
+                try {
+                    // 播放 tap_body 动作组的随机动作
+                    model.motion('tap_body');
+                    count++;
+                    console.log('[Pixi Live2D] 播放说话动作', count);
+                } catch (e) {
+                    console.log('[Pixi Live2D] 播放动作失败:', e.message);
+                }
+            }
+        }, 1000); // 每1秒播放一次
+    }
+
+    // 停止说话
+    function stopSpeaking() {
+        console.log('[Pixi Live2D] 😴 停止说话');
+        updateStatus('✨ Shizuku | 准备就绪');
+
+        // 停止定时器
+        if (speakingInterval) {
+            clearInterval(speakingInterval);
+            speakingInterval = null;
+            console.log('[Pixi Live2D] 已停止说话定时器');
+        }
+
+        // 恢复 idle 动作
+        if (model && model.internalModel) {
+            try {
+                model.motion('idle');
+                console.log('[Pixi Live2D] 恢复idle动作');
+            } catch (e) {
+                console.log('[Pixi Live2D] 恢复idle失败:', e.message);
+            }
+        }
+    }
+
+    // 监听父页面消息
+    window.addEventListener('message', function(e) {
+        console.log('[Pixi Live2D] 📩 收到消息:', e.data);
+
+        if (e.data && e.data.toString().startsWith('speaking')) {
+            console.log('[Pixi Live2D] 收到speaking消息，开始对口型');
+
+            // 解析情感：格式为 "speaking_emotion_timestamp"
+            const parts = e.data.toString().split('_');
+            const emotion = parts.length >= 2 ? parts[1] : 'neutral';
+
+            console.log('[Pixi Live2D] 解析出情感:', emotion);
+            startSpeaking(emotion);
+        } else if (e.data === 'idle') {
+            console.log('[Pixi Live2D] 收到idle消息，停止对口型');
+            stopSpeaking();
+        }
+    });
+
+    // 页面加载完成后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPixiLive2D);
+    } else {
+        initPixiLive2D();
+    }
+
+    // 响应式调整
+    window.addEventListener('resize', function() {
+        if (model && app) {
+            model.position.set(app.view.width / 2, app.view.height - 30);
+            const scale = Math.min(app.view.width / 800, app.view.height / 800) * 0.6;
+            model.scale.set(scale);
+        }
+    });
+
+})();
+</script>
+</body>
+</html>
