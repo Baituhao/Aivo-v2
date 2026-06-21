@@ -1271,7 +1271,246 @@ class AivoWebUIV6:
                                 max_lines=2
                             )
 
-                # 右侧：Live2D和设置
+                    # 工具面板 - 水平排列
+                    with gr.Row():
+                        # 历史管理功能
+                        with gr.Accordion("📜 会话管理", open=False):
+                            gr.Markdown("""
+                            <div style="padding:6px;background:linear-gradient(135deg,#fef3c7,#fde68a);
+                                border-radius:8px;margin-bottom:8px;text-align:center;">
+                                <span style="font-weight:600;color:#92400e;font-size:0.85em;">
+                                    💾 管理您的对话记录
+                                </span>
+                            </div>
+                            """)
+
+                            # 会话选择
+                            session_selector = gr.Dropdown(
+                                choices=self._get_initial_session_choices(),
+                                label="📂 选择会话",
+                                info="💡 显示第一条消息以便识别",
+                                interactive=True
+                            )
+                            with gr.Row():
+                                refresh_sessions_btn = gr.Button("🔄 刷新列表", size="sm")
+                                load_session_btn = gr.Button("📂 加载会话", size="sm", variant="primary")
+
+                            session_status = gr.Textbox(
+                                label="状态",
+                                interactive=False,
+                                show_label=False
+                            )
+
+                            gr.Markdown("---")
+
+                            # 导出和搜索
+                            with gr.Row():
+                                export_btn = gr.Button("💾 导出当前会话", size="sm")
+                            with gr.Row():
+                                search_input = gr.Textbox(
+                                    placeholder="🔍 搜索对话内容...",
+                                    show_label=False,
+                                    scale=3
+                                )
+                                search_btn = gr.Button("🔎", size="sm", scale=1)
+                            search_results = gr.HTML("")
+
+                            gr.Markdown("""
+                            <div style="margin-top:8px;padding:8px;background:rgba(249,250,251,0.8);
+                                border-radius:6px;font-size:0.75em;color:#6b7280;">
+                                💡 <b>提示：</b><br>
+                                • 🆕 新建会话：保存当前会话并创建新对话<br>
+                                • 🗑️ 清空所有：保存后重置所有数据<br>
+                                • 📂 加载会话：从历史中恢复会话<br>
+                                • 💾 导出：保存对话为JSON文件<br>
+                                • 🔍 搜索：查找当前会话内容
+                            </div>
+                            """)
+
+                        # 音色选择 - 更醒目的样式
+                        with gr.Accordion("🎵 音色选择", open=True):
+                            gr.Markdown("""
+                            <div style="padding:8px;background:linear-gradient(135deg,#ffecd2,#fcb69f);
+                                border-radius:8px;margin-bottom:10px;text-align:center;">
+                                <span style="font-weight:600;color:#8B4513;">
+                                    选择您喜欢的音色
+                                </span>
+                            </div>
+                            """)
+                            voice_selector = gr.Dropdown(
+                                choices=[
+                                    "冰糖", "茉莉", "苏打", "白桦",
+                                    "Mia", "Chloe", "Milo", "Dean"
+                                ],
+                                value="冰糖",
+                                label="当前音色",
+                                info="✨ 8种专业音色任您选择"
+                            )
+
+                        # 快速示例 - 可点击按钮（一键发送）
+                        with gr.Accordion("💡 快速示例", open=False):
+                            gr.Markdown("""
+                            <div style="padding:8px;background:linear-gradient(135deg,#e0f2fe,#dbeafe);
+                                border-radius:8px;margin-bottom:10px;text-align:center;">
+                                <span style="font-weight:600;color:#0369a1;">
+                                    点击下方按钮立即发送
+                                </span>
+                            </div>
+                            """)
+                            with gr.Row():
+                                example_btn1 = gr.Button("🌤️ 北京天气", size="sm")
+                                example_btn2 = gr.Button("🔍 AI最新进展", size="sm")
+                            with gr.Row():
+                                example_btn3 = gr.Button("📰 科技新闻", size="sm")
+                                example_btn4 = gr.Button("🌐 翻译Hello", size="sm")
+                            with gr.Row():
+                                example_btn5 = gr.Button("📅 今天星期几", size="sm")
+                                example_btn6 = gr.Button("💬 讲个笑话", size="sm")
+                            with gr.Row():
+                                example_btn7 = gr.Button("🧮 1+1等于几", size="sm")
+                                example_btn8 = gr.Button("🎵 推荐歌曲", size="sm")
+
+                        # 可用工具展示
+                        with gr.Accordion("🛠️ 可用工具", open=False):
+                            gr.Markdown("""
+                            <div style="padding:10px;background:linear-gradient(135deg,#fef3c7,#fde68a);
+                                border-radius:8px;margin-bottom:10px;text-align:center;">
+                                <span style="font-weight:700;color:#92400e;">
+                                    🚀 强大的工具库
+                                </span>
+                            </div>
+                            """)
+                            with gr.Row():
+                                tool_btn1 = gr.Button("🌤️ 天气查询", size="sm")
+                                tool_btn2 = gr.Button("🔍 网络搜索", size="sm")
+                            with gr.Row():
+                                tool_btn3 = gr.Button("🌐 文本翻译", size="sm")
+                                tool_btn4 = gr.Button("🧮 数学计算", size="sm")
+                            with gr.Row():
+                                tool_btn5 = gr.Button("📅 日期时间", size="sm")
+                                tool_btn6 = gr.Button("📰 新闻资讯", size="sm")
+                            with gr.Row():
+                                tool_btn7 = gr.Button("💱 汇率换算", size="sm")
+                                tool_btn8 = gr.Button("🎲 随机数生成", size="sm")
+                            with gr.Row():
+                                tool_btn9 = gr.Button("📝 文本处理", size="sm")
+                                tool_btn10 = gr.Button("🎨 创意灵感", size="sm")
+
+                        # Soul Memory 管理
+                        with gr.Accordion("🧠 Soul Memory", open=False):
+                            gr.Markdown("""
+                            <div style="padding:10px;background:linear-gradient(135deg,#e0c3fc,#8ec5fc);
+                                border-radius:8px;margin-bottom:10px;text-align:center;">
+                                <span style="font-weight:700;color:#4338ca;">
+                                    🌟 灵魂记忆与技能系统
+                                </span>
+                            </div>
+                            """)
+
+                            # 记忆摘要显示
+                            memory_summary = gr.HTML(
+                                value=self._format_memory_summary(),
+                                label="记忆摘要"
+                            )
+
+                            with gr.Tabs():
+                                # 人格设定
+                                with gr.Tab("🎭 人格"):
+                                    personality_name = gr.Textbox(
+                                        label="名称",
+                                        value=self.soul_memory.personality["name"]
+                                    )
+                                    personality_role = gr.Textbox(
+                                        label="角色",
+                                        value=self.soul_memory.personality["role"]
+                                    )
+                                    personality_traits = gr.Textbox(
+                                        label="特质",
+                                        placeholder="可用逗号、顿号分隔多个特质，如：友好，专业，高效",
+                                        value="，".join(self.soul_memory.personality["traits"])
+                                    )
+                                    personality_style = gr.Textbox(
+                                        label="说话风格",
+                                        value=self.soul_memory.personality["speaking_style"]
+                                    )
+                                    update_personality_btn = gr.Button("💾 保存人格设定", variant="primary")
+
+                                # 用户画像
+                                with gr.Tab("👤 用户"):
+                                    user_name = gr.Textbox(
+                                        label="用户名称",
+                                        value=self.soul_memory.user_profile.get("name", "")
+                                    )
+                                    user_interests = gr.Textbox(
+                                        label="兴趣爱好",
+                                        placeholder="可用逗号、顿号分隔多个兴趣，如：编程，音乐，运动",
+                                        value="，".join(self.soul_memory.user_profile["interests"])
+                                    )
+                                    user_habits = gr.Textbox(
+                                        label="使用习惯",
+                                        placeholder="可用逗号、顿号分隔多个习惯，如：晚上工作，喜欢语音交互",
+                                        value="，".join(self.soul_memory.user_profile["habits"])
+                                    )
+                                    user_background = gr.Textbox(
+                                        label="背景信息",
+                                        value=self.soul_memory.user_profile.get("background", "")
+                                    )
+                                    update_user_btn = gr.Button("💾 保存用户画像", variant="primary")
+
+                                # 技能管理
+                                with gr.Tab("🛠️ 技能"):
+                                    skills_display = gr.HTML(
+                                        value=self._format_skills_display()
+                                    )
+                                    new_skill_name = gr.Textbox(
+                                        label="新技能名称",
+                                        placeholder="例如：Python编程"
+                                    )
+                                    new_skill_level = gr.Dropdown(
+                                        label="技能等级",
+                                        choices=["beginner", "intermediate", "expert"],
+                                        value="intermediate"
+                                    )
+                                    with gr.Row():
+                                        add_skill_btn = gr.Button("➕ 添加技能", size="sm")
+                                        refresh_skills_btn = gr.Button("🔄 刷新列表", size="sm")
+
+                                # 偏好设置
+                                with gr.Tab("⚙️ 偏好"):
+                                    pref_language = gr.Dropdown(
+                                        label="语言",
+                                        choices=["中文", "English", "日本語"],
+                                        value=self.soul_memory.preferences["language"]
+                                    )
+                                    pref_response_style = gr.Dropdown(
+                                        label="回复风格",
+                                        choices=["简洁", "适中", "详细"],
+                                        value=self.soul_memory.preferences["response_style"]
+                                    )
+                                    pref_emoji = gr.Dropdown(
+                                        label="表情符号使用",
+                                        choices=["少", "适中", "多"],
+                                        value=self.soul_memory.preferences["emoji_usage"]
+                                    )
+                                    pref_formality = gr.Dropdown(
+                                        label="正式程度",
+                                        choices=["随意", "友好", "正式"],
+                                        value=self.soul_memory.preferences["formality"]
+                                    )
+                                    update_preferences_btn = gr.Button("💾 保存偏好设置", variant="primary")
+
+                            # 导入导出
+                            with gr.Row():
+                                export_memory_btn = gr.Button("💾 导出记忆", size="sm")
+                                import_memory_btn = gr.Button("📂 导入记忆", size="sm")
+
+                            memory_status = gr.Textbox(
+                                label="状态",
+                                interactive=False,
+                                show_label=False
+                            )
+
+                # 右侧：Live2D和统计
                 with gr.Column(scale=1):
                     # Live2D - 更突出的展示
                     gr.Markdown("""
@@ -1294,243 +1533,6 @@ class AivoWebUIV6:
 
                     # 统计信息
                     stats_display = gr.HTML(self._format_stats())
-
-                    # 历史管理功能
-                    with gr.Accordion("📜 会话管理", open=False):
-                        gr.Markdown("""
-                        <div style="padding:6px;background:linear-gradient(135deg,#fef3c7,#fde68a);
-                            border-radius:8px;margin-bottom:8px;text-align:center;">
-                            <span style="font-weight:600;color:#92400e;font-size:0.85em;">
-                                💾 管理您的对话记录
-                            </span>
-                        </div>
-                        """)
-
-                        # 会话选择
-                        session_selector = gr.Dropdown(
-                            choices=self._get_initial_session_choices(),
-                            label="📂 选择会话",
-                            info="💡 显示第一条消息以便识别",
-                            interactive=True
-                        )
-                        with gr.Row():
-                            refresh_sessions_btn = gr.Button("🔄 刷新列表", size="sm")
-                            load_session_btn = gr.Button("📂 加载会话", size="sm", variant="primary")
-
-                        session_status = gr.Textbox(
-                            label="状态",
-                            interactive=False,
-                            show_label=False
-                        )
-
-                        gr.Markdown("---")
-
-                        # 导出和搜索
-                        with gr.Row():
-                            export_btn = gr.Button("💾 导出当前会话", size="sm")
-                        with gr.Row():
-                            search_input = gr.Textbox(
-                                placeholder="🔍 搜索对话内容...",
-                                show_label=False,
-                                scale=3
-                            )
-                            search_btn = gr.Button("🔎", size="sm", scale=1)
-                        search_results = gr.HTML("")
-
-                        gr.Markdown("""
-                        <div style="margin-top:8px;padding:8px;background:rgba(249,250,251,0.8);
-                            border-radius:6px;font-size:0.75em;color:#6b7280;">
-                            💡 <b>提示：</b><br>
-                            • 🆕 新建会话：保存当前会话并创建新对话<br>
-                            • 🗑️ 清空所有：保存后重置所有数据<br>
-                            • 📂 加载会话：从历史中恢复会话<br>
-                            • 💾 导出：保存对话为JSON文件<br>
-                            • 🔍 搜索：查找当前会话内容
-                        </div>
-                        """)
-
-                    # 音色选择 - 更醒目的样式
-                    with gr.Accordion("🎵 音色选择", open=True):
-                        gr.Markdown("""
-                        <div style="padding:8px;background:linear-gradient(135deg,#ffecd2,#fcb69f);
-                            border-radius:8px;margin-bottom:10px;text-align:center;">
-                            <span style="font-weight:600;color:#8B4513;">
-                                选择您喜欢的音色
-                            </span>
-                        </div>
-                        """)
-                        voice_selector = gr.Dropdown(
-                            choices=[
-                                "冰糖", "茉莉", "苏打", "白桦",
-                                "Mia", "Chloe", "Milo", "Dean"
-                            ],
-                            value="冰糖",
-                            label="当前音色",
-                            info="✨ 8种专业音色任您选择"
-                        )
-
-                    # 快速示例 - 可点击按钮（一键发送）
-                    with gr.Accordion("💡 快速示例", open=False):
-                        gr.Markdown("""
-                        <div style="padding:8px;background:linear-gradient(135deg,#e0f2fe,#dbeafe);
-                            border-radius:8px;margin-bottom:10px;text-align:center;">
-                            <span style="font-weight:600;color:#0369a1;">
-                                点击下方按钮立即发送
-                            </span>
-                        </div>
-                        """)
-                        with gr.Row():
-                            example_btn1 = gr.Button("🌤️ 北京天气", size="sm")
-                            example_btn2 = gr.Button("🔍 AI最新进展", size="sm")
-                        with gr.Row():
-                            example_btn3 = gr.Button("📰 科技新闻", size="sm")
-                            example_btn4 = gr.Button("🌐 翻译Hello", size="sm")
-                        with gr.Row():
-                            example_btn5 = gr.Button("📅 今天星期几", size="sm")
-                            example_btn6 = gr.Button("💬 讲个笑话", size="sm")
-                        with gr.Row():
-                            example_btn7 = gr.Button("🧮 1+1等于几", size="sm")
-                            example_btn8 = gr.Button("🎵 推荐歌曲", size="sm")
-
-                    # 可用工具展示
-                    with gr.Accordion("🛠️ 可用工具", open=False):
-                        gr.Markdown("""
-                        <div style="padding:10px;background:linear-gradient(135deg,#fef3c7,#fde68a);
-                            border-radius:8px;margin-bottom:10px;text-align:center;">
-                            <span style="font-weight:700;color:#92400e;">
-                                🚀 强大的工具库
-                            </span>
-                        </div>
-                        """)
-                        with gr.Row():
-                            tool_btn1 = gr.Button("🌤️ 天气查询", size="sm")
-                            tool_btn2 = gr.Button("🔍 网络搜索", size="sm")
-                        with gr.Row():
-                            tool_btn3 = gr.Button("🌐 文本翻译", size="sm")
-                            tool_btn4 = gr.Button("🧮 数学计算", size="sm")
-                        with gr.Row():
-                            tool_btn5 = gr.Button("📅 日期时间", size="sm")
-                            tool_btn6 = gr.Button("📰 新闻资讯", size="sm")
-                        with gr.Row():
-                            tool_btn7 = gr.Button("💱 汇率换算", size="sm")
-                            tool_btn8 = gr.Button("🎲 随机数生成", size="sm")
-                        with gr.Row():
-                            tool_btn9 = gr.Button("📝 文本处理", size="sm")
-                            tool_btn10 = gr.Button("🎨 创意灵感", size="sm")
-
-                    # Soul Memory 管理
-                    with gr.Accordion("🧠 Soul Memory", open=False):
-                        gr.Markdown("""
-                        <div style="padding:10px;background:linear-gradient(135deg,#e0c3fc,#8ec5fc);
-                            border-radius:8px;margin-bottom:10px;text-align:center;">
-                            <span style="font-weight:700;color:#4338ca;">
-                                🌟 灵魂记忆与技能系统
-                            </span>
-                        </div>
-                        """)
-
-                        # 记忆摘要显示
-                        memory_summary = gr.HTML(
-                            value=self._format_memory_summary(),
-                            label="记忆摘要"
-                        )
-
-                        with gr.Tabs():
-                            # 人格设定
-                            with gr.Tab("🎭 人格"):
-                                personality_name = gr.Textbox(
-                                    label="名称",
-                                    value=self.soul_memory.personality["name"]
-                                )
-                                personality_role = gr.Textbox(
-                                    label="角色",
-                                    value=self.soul_memory.personality["role"]
-                                )
-                                personality_traits = gr.Textbox(
-                                    label="特质",
-                                    placeholder="可用逗号、顿号分隔多个特质，如：友好，专业，高效",
-                                    value="，".join(self.soul_memory.personality["traits"])
-                                )
-                                personality_style = gr.Textbox(
-                                    label="说话风格",
-                                    value=self.soul_memory.personality["speaking_style"]
-                                )
-                                update_personality_btn = gr.Button("💾 保存人格设定", variant="primary")
-
-                            # 用户画像
-                            with gr.Tab("👤 用户"):
-                                user_name = gr.Textbox(
-                                    label="用户名称",
-                                    value=self.soul_memory.user_profile.get("name", "")
-                                )
-                                user_interests = gr.Textbox(
-                                    label="兴趣爱好",
-                                    placeholder="可用逗号、顿号分隔多个兴趣，如：编程，音乐，运动",
-                                    value="，".join(self.soul_memory.user_profile["interests"])
-                                )
-                                user_habits = gr.Textbox(
-                                    label="使用习惯",
-                                    placeholder="可用逗号、顿号分隔多个习惯，如：晚上工作，喜欢语音交互",
-                                    value="，".join(self.soul_memory.user_profile["habits"])
-                                )
-                                user_background = gr.Textbox(
-                                    label="背景信息",
-                                    value=self.soul_memory.user_profile.get("background", "")
-                                )
-                                update_user_btn = gr.Button("💾 保存用户画像", variant="primary")
-
-                            # 技能管理
-                            with gr.Tab("🛠️ 技能"):
-                                skills_display = gr.HTML(
-                                    value=self._format_skills_display()
-                                )
-                                new_skill_name = gr.Textbox(
-                                    label="新技能名称",
-                                    placeholder="例如：Python编程"
-                                )
-                                new_skill_level = gr.Dropdown(
-                                    label="技能等级",
-                                    choices=["beginner", "intermediate", "expert"],
-                                    value="intermediate"
-                                )
-                                with gr.Row():
-                                    add_skill_btn = gr.Button("➕ 添加技能", size="sm")
-                                    refresh_skills_btn = gr.Button("🔄 刷新列表", size="sm")
-
-                            # 偏好设置
-                            with gr.Tab("⚙️ 偏好"):
-                                pref_language = gr.Dropdown(
-                                    label="语言",
-                                    choices=["中文", "English", "日本語"],
-                                    value=self.soul_memory.preferences["language"]
-                                )
-                                pref_response_style = gr.Dropdown(
-                                    label="回复风格",
-                                    choices=["简洁", "适中", "详细"],
-                                    value=self.soul_memory.preferences["response_style"]
-                                )
-                                pref_emoji = gr.Dropdown(
-                                    label="表情符号使用",
-                                    choices=["少", "适中", "多"],
-                                    value=self.soul_memory.preferences["emoji_usage"]
-                                )
-                                pref_formality = gr.Dropdown(
-                                    label="正式程度",
-                                    choices=["随意", "友好", "正式"],
-                                    value=self.soul_memory.preferences["formality"]
-                                )
-                                update_preferences_btn = gr.Button("💾 保存偏好设置", variant="primary")
-
-                        # 导入导出
-                        with gr.Row():
-                            export_memory_btn = gr.Button("💾 导出记忆", size="sm")
-                            import_memory_btn = gr.Button("📂 导入记忆", size="sm")
-
-                        memory_status = gr.Textbox(
-                            label="状态",
-                            interactive=False,
-                            show_label=False
-                        )
 
             # ============================================
             # 底部信息 - 技术栈和实现路径
