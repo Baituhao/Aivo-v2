@@ -11,6 +11,9 @@ import sys
 import base64
 import gradio as gr
 from pathlib import Path
+import time
+import json
+from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -18,10 +21,19 @@ from llm_service_v2 import LLMServiceWithTools
 from tts_service import TTSService
 from voice_manager import VoiceManager
 from asr_service import ASRService
+from soul_memory import SoulMemory
 
 # live2d.html的绝对路径
 STATIC_DIR = Path(__file__).parent / "static"
-LIVE2D_HTML = STATIC_DIR / "live2d.html"
+LIVE2D_HTML = STATIC_DIR / "live2d_pixi.html"  # 有 Cubism 4 Core 了，再试一次
+
+# 会话保存目录
+SESSIONS_DIR = Path(__file__).parent.parent / "sessions"
+SESSIONS_DIR.mkdir(exist_ok=True)
+
+# Soul Memory 目录
+MEMORY_DIR = Path(__file__).parent.parent / "memory"
+MEMORY_DIR.mkdir(exist_ok=True)
 
 
 class AivoWebUIV6:
@@ -30,13 +42,216 @@ class AivoWebUIV6:
         self.tts = TTSService()
         self.voice_manager = VoiceManager()
         self.asr = ASRService()
+        self.soul_memory = SoulMemory(MEMORY_DIR)  # 初始化灵魂记忆系统
         self.current_voice = "冰糖"
+        self.current_emotion = "neutral"  # 保存当前情感
+        self.session_start_time = time.time()
+        self.response_times = []  # 记录每次响应时长
+        self.current_session_id = None  # 当前会话ID
         self.stats = {
             "conversation_count": 0,
             "tool_calls": 0,
             "emotion_changes": 0,
-            "last_emotion": "neutral"
+            "last_emotion": "neutral",
+            "total_words": 0,  # 总字数
+            "avg_response_length": 0,  # 平均回复长度
+            "most_used_tool": "无",  # 最常用工具
+            "tool_usage": {},  # 工具使用次数统计
+            "emotion_distribution": {  # 情感分布
+                "happy": 0,
+                "sad": 0,
+                "neutral": 0,
+                "angry": 0,
+                "surprised": 0
+            },
+            "longest_conversation": 0,  # 最长连续对话
+            "total_audio_duration": 0,  # 总音频时长（秒）
         }
+        self.conversation_history = []  # 完整对话历史（用于导出和搜索）
+        self._load_or_create_session()  # 自动加载或创建会话
+
+    def _load_or_create_session(self):
+        """加载最近的会话或创建新会话"""
+        session_files = sorted(SESSIONS_DIR.glob("session_*.json"), key=lambda x: x.stat().st_mtime, reverse=True)
+
+        if session_files:
+            # 加载最近的会话
+            latest_session = session_files[0]
+            try:
+                with open(latest_session, 'r', encoding='utf-8') as f:
+                    session_data = json.load(f)
+
+                self.current_session_id = session_data.get('session_id')
+                self.session_start_time = session_data.get('session_start_time', time.time())
+                self.response_times = session_data.get('response_times', [])
+                self.stats = session_data.get('stats', self.stats)
+                self.conversation_history = session_data.get('conversation_history', [])
+
+                print(f"✅ 已加载会话: {self.current_session_id}")
+                print(f"   对话数: {len(self.conversation_history)}")
+            except Exception as e:
+                print(f"⚠️ 加载会话失败: {e}，创建新会话")
+                self._create_new_session()
+        else:
+            self._create_new_session()
+
+    def _create_new_session(self):
+        """创建新会话"""
+        self.current_session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.session_start_time = time.time()
+        self.response_times = []
+        self.stats = {
+            "conversation_count": 0,
+            "tool_calls": 0,
+            "emotion_changes": 0,
+            "last_emotion": "neutral",
+            "total_words": 0,
+            "avg_response_length": 0,
+            "most_used_tool": "无",
+            "tool_usage": {},
+            "emotion_distribution": {
+                "happy": 0,
+                "sad": 0,
+                "neutral": 0,
+                "angry": 0,
+                "surprised": 0
+            },
+            "longest_conversation": 0,
+            "total_audio_duration": 0,
+        }
+        self.conversation_history = []
+        self._save_session()
+        print(f"🆕 已创建新会话: {self.current_session_id}")
+
+    def _save_session(self):
+        """保存当前会话到文件"""
+        if not self.current_session_id:
+            return
+
+        session_file = SESSIONS_DIR / f"session_{self.current_session_id}.json"
+        session_data = {
+            "session_id": self.current_session_id,
+            "created_at": datetime.fromtimestamp(self.session_start_time).strftime("%Y-%m-%d %H:%M:%S"),
+            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "session_start_time": self.session_start_time,
+            "response_times": self.response_times,
+            "stats": self.stats,
+            "conversation_history": self.conversation_history
+        }
+
+        try:
+            with open(session_file, 'w', encoding='utf-8') as f:
+                json.dump(session_data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"⚠️ 保存会话失败: {e}")
+
+    def _get_sessions_list(self):
+        """获取所有会话列表"""
+        session_files = sorted(SESSIONS_DIR.glob("session_*.json"), key=lambda x: x.stat().st_mtime, reverse=True)
+        sessions = []
+
+        for session_file in session_files:
+            try:
+                with open(session_file, 'r', encoding='utf-8') as f:
+                    session_data = json.load(f)
+
+                    # 获取第一条用户消息
+                    first_message = "空会话"
+                    if session_data.get('conversation_history'):
+                        first_conv = session_data['conversation_history'][0]
+                        first_message = first_conv.get('user', '空会话')
+                        # 限制长度，避免过长
+                        if len(first_message) > 30:
+                            first_message = first_message[:30] + "..."
+
+                    sessions.append({
+                        "id": session_data.get('session_id'),
+                        "created_at": session_data.get('created_at'),
+                        "last_updated": session_data.get('last_updated'),
+                        "conversation_count": len(session_data.get('conversation_history', [])),
+                        "first_message": first_message
+                    })
+            except Exception as e:
+                print(f"⚠️ 读取会话文件失败 {session_file}: {e}")
+
+        return sessions
+
+    def _get_initial_session_choices(self):
+        """获取初始会话选择列表"""
+        sessions = self._get_sessions_list()
+        choices = []
+        for s in sessions:
+            # 格式：💬 "第一条消息..." (5条对话) - 2025-06-21 14:30
+            choice = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']}"
+            choices.append(choice)
+        return choices
+
+    def load_session(self, session_id: str):
+        """加载指定会话"""
+        session_file = SESSIONS_DIR / f"session_{session_id}.json"
+
+        if not session_file.exists():
+            return None, self._format_stats(), "❌ 会话不存在", None
+
+        try:
+            with open(session_file, 'r', encoding='utf-8') as f:
+                session_data = json.load(f)
+
+            # 更新当前会话信息
+            self.current_session_id = session_data.get('session_id')
+            self.session_start_time = session_data.get('session_start_time', time.time())
+            self.response_times = session_data.get('response_times', [])
+            self.stats = session_data.get('stats', self.stats)
+            self.conversation_history = session_data.get('conversation_history', [])
+
+            # 🔧 关键修复：恢复 LLM 的对话历史记忆
+            self.llm.clear_history()  # 先清空当前历史
+
+            # 重建 LLM 历史记忆
+            llm_history = []
+            for conv in self.conversation_history:
+                # 用户消息
+                llm_history.append({
+                    "role": "user",
+                    "content": conv['user']
+                })
+                # 助手消息（需要重建 JSON 格式）
+                assistant_response = {
+                    "speech": conv['assistant'],
+                    "emotion": conv.get('emotion', 'neutral'),
+                    "action": "none"
+                }
+                llm_history.append({
+                    "role": "assistant",
+                    "content": json.dumps(assistant_response, ensure_ascii=False)
+                })
+
+            # 设置 LLM 历史
+            self.llm.set_history(llm_history)
+
+            # 重建对话历史显示（包含音频气泡）
+            history = []
+            for conv in self.conversation_history:
+                history.append({"role": "user", "content": conv['user']})
+                # 注意：加载的历史对话不包含音频，只显示文本
+                history.append({"role": "assistant", "content": conv['assistant']})
+
+            # 获取当前会话的显示文本
+            sessions = self._get_sessions_list()
+            current_display = None
+            for s in sessions:
+                if s['id'] == session_id:
+                    current_display = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']}"
+                    break
+
+            print(f"✅ 已加载会话: {session_id}，包含 {len(self.conversation_history)} 轮对话")
+            print(f"   LLM 历史记忆已恢复: {len(llm_history)} 条消息")
+            return history, self._format_stats(), f"✅ 已加载会话: {session_id}，包含 {len(self.conversation_history)} 轮对话", current_display
+        except Exception as e:
+            print(f"❌ 加载会话失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return None, self._format_stats(), f"❌ 加载失败: {str(e)}", None
 
     def _audio_to_base64(self, audio_path: str) -> str:
         """将音频文件转为base64"""
@@ -79,6 +294,7 @@ class AivoWebUIV6:
         print(f"[服务端] 当前音色: {voice_choice}")
 
         self.current_voice = voice_choice
+        start_time = time.time()
 
         try:
             # LLM生成回复
@@ -92,6 +308,10 @@ class AivoWebUIV6:
                 voice=self.current_voice
             )
             print(f"[服务端] TTS生成音频: {audio_path}")
+
+            # 计算响应时长
+            response_time = time.time() - start_time
+            self.response_times.append(response_time)
 
             # 更新历史
             if history is None:
@@ -107,11 +327,38 @@ class AivoWebUIV6:
                 "content": bubble_html
             })
 
+            # 保存到完整对话历史
+            self.conversation_history.append({
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "user": message,
+                "assistant": response['speech'],
+                "emotion": response['emotion'],
+                "response_time": round(response_time, 2)
+            })
+
             # 更新统计
             self.stats['conversation_count'] += 1
-            if response['emotion'] != self.stats['last_emotion']:
+            self.stats['total_words'] += len(response['speech'])
+
+            # 更新情感分布
+            emotion = response['emotion']
+            if emotion in self.stats['emotion_distribution']:
+                self.stats['emotion_distribution'][emotion] += 1
+
+            if emotion != self.stats['last_emotion']:
                 self.stats['emotion_changes'] += 1
-                self.stats['last_emotion'] = response['emotion']
+                self.stats['last_emotion'] = emotion
+
+            # 更新最长连续对话
+            if self.stats['conversation_count'] > self.stats['longest_conversation']:
+                self.stats['longest_conversation'] = self.stats['conversation_count']
+
+            # 保存当前情感
+            self.current_emotion = emotion
+            print(f"[服务端] 当前情感: {self.current_emotion}")
+
+            # 自动保存会话
+            self._save_session()
 
             print(f"[服务端] ===== 消息处理完成 =====\n")
             return history, self._format_stats()
@@ -145,58 +392,404 @@ class AivoWebUIV6:
             history.append({"role": "assistant", "content": f"❌ 语音识别失败: {str(e)}"})
             return history, self._format_stats(), f"❌ {str(e)}"
 
+    def _format_memory_summary(self) -> str:
+        """格式化记忆摘要"""
+        personality = self.soul_memory.personality
+        user = self.soul_memory.user_profile
+        skills = self.soul_memory.skills
+        prefs = self.soul_memory.preferences
+
+        enabled_skills = len(self.soul_memory.get_enabled_skills())
+
+        return f"""
+        <div style="background:linear-gradient(135deg,#f5f7fa,#c3cfe2);padding:14px;border-radius:12px;">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                <div style="background:white;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);">
+                    <div style="font-size:1.2em;margin-bottom:4px;">🎭</div>
+                    <div style="font-size:0.85em;font-weight:700;color:#4338ca;">{personality['name']}</div>
+                    <div style="font-size:0.7em;color:#9ca3af;">{personality['role']}</div>
+                </div>
+                <div style="background:white;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);">
+                    <div style="font-size:1.2em;margin-bottom:4px;">👤</div>
+                    <div style="font-size:0.85em;font-weight:700;color:#4338ca;">用户画像</div>
+                    <div style="font-size:0.7em;color:#9ca3af;">{len(user['interests'])}个兴趣</div>
+                </div>
+                <div style="background:white;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);">
+                    <div style="font-size:1.2em;margin-bottom:4px;">🛠️</div>
+                    <div style="font-size:0.85em;font-weight:700;color:#4338ca;">技能系统</div>
+                    <div style="font-size:0.7em;color:#9ca3af;">{enabled_skills}个已启用</div>
+                </div>
+                <div style="background:white;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);">
+                    <div style="font-size:1.2em;margin-bottom:4px;">⚙️</div>
+                    <div style="font-size:0.85em;font-weight:700;color:#4338ca;">偏好设置</div>
+                    <div style="font-size:0.7em;color:#9ca3af;">{prefs['language']} | {prefs['response_style']}</div>
+                </div>
+            </div>
+        </div>
+        """
+
+    def _format_skills_display(self) -> str:
+        """格式化技能显示"""
+        skills = self.soul_memory.get_skills()
+        html = """
+        <div style="max-height:300px;overflow-y:auto;">
+            <div style="font-size:0.9em;font-weight:700;color:#4338ca;margin-bottom:8px;">
+                📚 知识领域
+            </div>
+        """
+
+        for skill in skills["knowledge_domains"]:
+            status = "✅" if skill.get("enabled", True) else "❌"
+            level_badge = {
+                "beginner": "🟢 初级",
+                "intermediate": "🟡 中级",
+                "expert": "🔴 专家"
+            }.get(skill["level"], "⚪ 未知")
+
+            html += f"""
+            <div style="background:white;padding:8px;margin-bottom:6px;border-radius:8px;
+                box-shadow:0 2px 4px rgba(0,0,0,0.06);display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <span style="font-weight:600;color:#1f2937;">{status} {skill['name']}</span>
+                    <span style="margin-left:8px;font-size:0.8em;color:#6b7280;">{level_badge}</span>
+                </div>
+            </div>
+            """
+
+        if skills["custom_skills"]:
+            html += """
+            <div style="font-size:0.9em;font-weight:700;color:#4338ca;margin:16px 0 8px 0;">
+                ⭐ 自定义技能
+            </div>
+            """
+            for skill in skills["custom_skills"]:
+                status = "✅" if skill.get("enabled", True) else "❌"
+                level_badge = {
+                    "beginner": "🟢 初级",
+                    "intermediate": "🟡 中级",
+                    "expert": "🔴 专家"
+                }.get(skill["level"], "⚪ 未知")
+
+                html += f"""
+                <div style="background:white;padding:8px;margin-bottom:6px;border-radius:8px;
+                    box-shadow:0 2px 4px rgba(0,0,0,0.06);display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span style="font-weight:600;color:#1f2937;">{status} {skill['name']}</span>
+                        <span style="margin-left:8px;font-size:0.8em;color:#6b7280;">{level_badge}</span>
+                    </div>
+                </div>
+                """
+
+        html += "</div>"
+        return html
+
+    def update_personality_memory(self, name, role, traits, style):
+        """更新人格记忆"""
+        try:
+            # 支持多种分隔符：英文逗号、中文逗号、顿号
+            traits_list = [t.strip() for t in traits.replace("，", ",").replace("、", ",").split(",") if t.strip()]
+            self.soul_memory.update_personality(
+                name=name,
+                role=role,
+                traits=traits_list,
+                speaking_style=style
+            )
+            return self._format_memory_summary(), f"✅ 人格设定已保存（{len(traits_list)}个特质）"
+        except Exception as e:
+            return self._format_memory_summary(), f"❌ 保存失败: {str(e)}"
+
+    def update_user_memory(self, name, interests, habits, background):
+        """更新用户记忆"""
+        try:
+            # 支持多种分隔符：英文逗号、中文逗号、顿号
+            interests_list = [i.strip() for i in interests.replace("，", ",").replace("、", ",").split(",") if i.strip()]
+            habits_list = [h.strip() for h in habits.replace("，", ",").replace("、", ",").split(",") if h.strip()]
+            self.soul_memory.update_user_profile(
+                name=name,
+                interests=interests_list,
+                habits=habits_list,
+                background=background
+            )
+            return self._format_memory_summary(), f"✅ 用户画像已保存（{len(interests_list)}个兴趣，{len(habits_list)}个习惯）"
+        except Exception as e:
+            return self._format_memory_summary(), f"❌ 保存失败: {str(e)}"
+
+    def add_skill_to_memory(self, skill_name, skill_level):
+        """添加技能到记忆"""
+        if not skill_name.strip():
+            return self._format_skills_display(), "❌ 请输入技能名称"
+        try:
+            self.soul_memory.add_skill(skill_name.strip(), skill_level)
+            return self._format_skills_display(), f"✅ 已添加技能: {skill_name}"
+        except Exception as e:
+            return self._format_skills_display(), f"❌ 添加失败: {str(e)}"
+
+    def update_preferences_memory(self, language, response_style, emoji, formality):
+        """更新偏好设置"""
+        try:
+            self.soul_memory.update_preferences(
+                language=language,
+                response_style=response_style,
+                emoji_usage=emoji,
+                formality=formality
+            )
+            return self._format_memory_summary(), "✅ 偏好设置已保存"
+        except Exception as e:
+            return self._format_memory_summary(), f"❌ 保存失败: {str(e)}"
+
+    def export_memory(self):
+        """导出记忆"""
+        try:
+            export_path = MEMORY_DIR / f"soul_memory_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            self.soul_memory.export_all(export_path)
+            return f"✅ 记忆已导出到: {export_path}"
+        except Exception as e:
+            return f"❌ 导出失败: {str(e)}"
+
     def _format_stats(self) -> str:
         """格式化统计信息"""
+        # 找出最常见的情感
+        emotion_dist = self.stats['emotion_distribution']
+        most_emotion = max(emotion_dist.items(), key=lambda x: x[1])[0] if any(emotion_dist.values()) else "neutral"
+        emotion_emoji = {
+            "happy": "😊", "sad": "😢", "neutral": "😐", "angry": "😠", "surprised": "😲"
+        }
+
+        # 计算平均响应时间
+        avg_response_time = sum(self.response_times) / len(self.response_times) if self.response_times else 0
+
+        # 计算会话时长
+        session_duration = int(time.time() - self.session_start_time)
+        hours = session_duration // 3600
+        minutes = (session_duration % 3600) // 60
+        seconds = session_duration % 60
+        duration_str = f"{hours}h {minutes}m {seconds}s" if hours > 0 else f"{minutes}m {seconds}s"
+
+        # 情感分布条形图
+        total_emotions = sum(emotion_dist.values()) or 1
+        emotion_bars = ""
+        for emotion, count in emotion_dist.items():
+            percentage = (count / total_emotions) * 100
+            emoji = emotion_emoji[emotion]
+            if percentage > 0:
+                emotion_bars += f"""
+                <div style="margin:4px 0;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:1.2em;">{emoji}</span>
+                        <div style="flex:1;background:#e5e7eb;border-radius:8px;height:20px;overflow:hidden;">
+                            <div style="width:{percentage}%;height:100%;background:linear-gradient(90deg,#667eea,#764ba2);
+                                transition:width 0.3s ease;"></div>
+                        </div>
+                        <span style="font-size:0.8em;color:#6b7280;min-width:40px;">{count}次</span>
+                    </div>
+                </div>"""
+
         return f"""
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0;">
-            <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:16px;
-                border-radius:16px;text-align:center;color:white;
-                box-shadow:0 6px 20px rgba(102,126,234,0.3);
-                transform:perspective(1000px) rotateX(2deg);
-                transition:transform 0.3s ease;">
-                <div style="font-size:2em;margin-bottom:4px;">💬</div>
-                <div style="font-size:2em;font-weight:900;margin:8px 0;
-                    text-shadow:2px 2px 4px rgba(0,0,0,0.2);">{self.stats['conversation_count']}</div>
-                <div style="font-size:0.8em;opacity:0.95;font-weight:600;">对话轮数</div>
+        <div style="background:linear-gradient(135deg,#f5f7fa,#c3cfe2);padding:16px;border-radius:16px;margin-bottom:16px;">
+            <div style="text-align:center;font-size:1.3em;font-weight:800;color:#4338ca;margin-bottom:14px;">
+                📊 实时统计面板
             </div>
-            <div style="background:linear-gradient(135deg,#f093fb,#f5576c);padding:16px;
-                border-radius:16px;text-align:center;color:white;
-                box-shadow:0 6px 20px rgba(240,147,251,0.3);
-                transform:perspective(1000px) rotateX(2deg);
-                transition:transform 0.3s ease;">
-                <div style="font-size:2em;margin-bottom:4px;">🔧</div>
-                <div style="font-size:2em;font-weight:900;margin:8px 0;
-                    text-shadow:2px 2px 4px rgba(0,0,0,0.2);">{self.stats['tool_calls']}</div>
-                <div style="font-size:0.8em;opacity:0.95;font-weight:600;">工具调用</div>
+
+            <!-- 主要统计卡片 -->
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;">
+                <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:12px;
+                    border-radius:12px;text-align:center;color:white;
+                    box-shadow:0 4px 15px rgba(102,126,234,0.4);position:relative;overflow:hidden;">
+                    <div style="position:absolute;top:-20px;right:-20px;width:60px;height:60px;
+                        background:rgba(255,255,255,0.1);border-radius:50%;"></div>
+                    <div style="font-size:1.5em;margin-bottom:2px;">💬</div>
+                    <div style="font-size:2em;font-weight:900;margin:4px 0;position:relative;z-index:1;">
+                        {self.stats['conversation_count']}</div>
+                    <div style="font-size:0.75em;opacity:0.95;font-weight:600;">对话轮次</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#f093fb,#f5576c);padding:12px;
+                    border-radius:12px;text-align:center;color:white;
+                    box-shadow:0 4px 15px rgba(240,147,251,0.4);position:relative;overflow:hidden;">
+                    <div style="position:absolute;top:-20px;right:-20px;width:60px;height:60px;
+                        background:rgba(255,255,255,0.1);border-radius:50%;"></div>
+                    <div style="font-size:1.5em;margin-bottom:2px;">⚡</div>
+                    <div style="font-size:2em;font-weight:900;margin:4px 0;position:relative;z-index:1;">
+                        {avg_response_time:.1f}s</div>
+                    <div style="font-size:0.75em;opacity:0.95;font-weight:600;">平均响应</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#4facfe,#00f2fe);padding:12px;
+                    border-radius:12px;text-align:center;color:white;
+                    box-shadow:0 4px 15px rgba(79,172,254,0.4);position:relative;overflow:hidden;">
+                    <div style="position:absolute;top:-20px;right:-20px;width:60px;height:60px;
+                        background:rgba(255,255,255,0.1);border-radius:50%;"></div>
+                    <div style="font-size:1.5em;margin-bottom:2px;">{emotion_emoji[most_emotion]}</div>
+                    <div style="font-size:2em;font-weight:900;margin:4px 0;position:relative;z-index:1;">
+                        {self.stats['emotion_changes']}</div>
+                    <div style="font-size:0.75em;opacity:0.95;font-weight:600;">情感切换</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#fa709a,#fee140);padding:12px;
+                    border-radius:12px;text-align:center;color:white;
+                    box-shadow:0 4px 15px rgba(250,112,154,0.4);position:relative;overflow:hidden;">
+                    <div style="position:absolute;top:-20px;right:-20px;width:60px;height:60px;
+                        background:rgba(255,255,255,0.1);border-radius:50%;"></div>
+                    <div style="font-size:1.5em;margin-bottom:2px;">📝</div>
+                    <div style="font-size:2em;font-weight:900;margin:4px 0;position:relative;z-index:1;">
+                        {self.stats['total_words']}</div>
+                    <div style="font-size:0.75em;opacity:0.95;font-weight:600;">总字数</div>
+                </div>
             </div>
-            <div style="background:linear-gradient(135deg,#4facfe,#00f2fe);padding:16px;
-                border-radius:16px;text-align:center;color:white;
-                box-shadow:0 6px 20px rgba(79,172,254,0.3);
-                transform:perspective(1000px) rotateX(2deg);
-                transition:transform 0.3s ease;">
-                <div style="font-size:2em;margin-bottom:4px;">🎭</div>
-                <div style="font-size:2em;font-weight:900;margin:8px 0;
-                    text-shadow:2px 2px 4px rgba(0,0,0,0.2);">{self.stats['emotion_changes']}</div>
-                <div style="font-size:0.8em;opacity:0.95;font-weight:600;">情感切换</div>
+
+            <!-- 情感分布图 -->
+            <div style="background:white;padding:12px;border-radius:12px;margin-bottom:10px;
+                box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <div style="font-size:0.9em;font-weight:700;color:#4338ca;margin-bottom:8px;text-align:center;">
+                    🎭 情感分布
+                </div>
+                {emotion_bars if emotion_bars else '<div style="text-align:center;color:#9ca3af;font-size:0.85em;">暂无数据</div>'}
+            </div>
+
+            <!-- 会话信息 -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div style="background:white;padding:10px;border-radius:10px;text-align:center;
+                    box-shadow:0 2px 6px rgba(0,0,0,0.06);">
+                    <div style="font-size:1.2em;margin-bottom:4px;">⏱️</div>
+                    <div style="font-size:0.9em;font-weight:700;color:#4338ca;">{duration_str}</div>
+                    <div style="font-size:0.7em;color:#9ca3af;">会话时长</div>
+                </div>
+                <div style="background:white;padding:10px;border-radius:10px;text-align:center;
+                    box-shadow:0 2px 6px rgba(0,0,0,0.06);">
+                    <div style="font-size:1.2em;margin-bottom:4px;">🔧</div>
+                    <div style="font-size:0.9em;font-weight:700;color:#4338ca;">{self.stats['tool_calls']}</div>
+                    <div style="font-size:0.7em;color:#9ca3af;">工具调用</div>
+                </div>
             </div>
         </div>"""
 
-    def clear_history(self):
-        """清空对话历史"""
+    def new_session(self):
+        """新建会话（保留统计数据）"""
         self.llm.clear_history()
+
+        # 先保存当前会话
+        self._save_session()
+
+        # 创建新会话
+        self._create_new_session()
+
+        return [], self._format_stats()
+
+    def clear_history(self):
+        """清空对话历史和统计数据"""
+        self.llm.clear_history()
+
+        # 保存当前会话后创建新会话
+        self._save_session()
+
+        self.session_start_time = time.time()
+        self.response_times = []
         self.stats = {
             "conversation_count": 0,
             "tool_calls": 0,
             "emotion_changes": 0,
-            "last_emotion": "neutral"
+            "last_emotion": "neutral",
+            "total_words": 0,
+            "avg_response_length": 0,
+            "most_used_tool": "无",
+            "tool_usage": {},
+            "emotion_distribution": {
+                "happy": 0,
+                "sad": 0,
+                "neutral": 0,
+                "angry": 0,
+                "surprised": 0
+            },
+            "longest_conversation": 0,
+            "total_audio_duration": 0,
         }
+        self.conversation_history = []
+
+        # 创建新会话
+        self._create_new_session()
+
         return [], self._format_stats()
+
+    def export_history(self):
+        """导出对话历史为JSON"""
+        if not self.conversation_history:
+            return None
+
+        export_data = {
+            "export_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "total_conversations": len(self.conversation_history),
+            "stats": self.stats,
+            "conversations": self.conversation_history
+        }
+
+        filename = f"aivo_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = Path("/tmp") / filename
+
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(export_data, f, ensure_ascii=False, indent=2)
+
+        return str(filepath)
+
+    def search_history(self, keyword: str):
+        """搜索对话历史"""
+        if not keyword.strip():
+            return "请输入搜索关键词"
+
+        results = []
+        for i, conv in enumerate(self.conversation_history):
+            if keyword.lower() in conv['user'].lower() or keyword.lower() in conv['assistant'].lower():
+                results.append(f"""
+                <div style="background:white;padding:12px;border-radius:10px;margin:8px 0;
+                    box-shadow:0 2px 8px rgba(0,0,0,0.08);border-left:4px solid #667eea;">
+                    <div style="font-size:0.75em;color:#9ca3af;margin-bottom:6px;">
+                        💬 对话 #{i+1} | {conv['timestamp']} | {conv['emotion']} | {conv['response_time']}s
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <span style="font-weight:700;color:#4338ca;">用户：</span>
+                        <span style="color:#1f2937;">{conv['user']}</span>
+                    </div>
+                    <div>
+                        <span style="font-weight:700;color:#7c3aed;">Aivo：</span>
+                        <span style="color:#4b5563;">{conv['assistant']}</span>
+                    </div>
+                </div>
+                """)
+
+        if not results:
+            return f"<div style='text-align:center;color:#9ca3af;padding:20px;'>未找到包含 '{keyword}' 的对话</div>"
+
+        return f"""
+        <div style="max-height:400px;overflow-y:auto;padding:4px;">
+            <div style="text-align:center;font-weight:700;color:#4338ca;margin-bottom:12px;">
+                🔍 找到 {len(results)} 条相关对话
+            </div>
+            {''.join(results)}
+        </div>
+        """
 
     def _get_live2d_html(self) -> str:
         """使用iframe srcdoc嵌入Live2D"""
-        # 读取完整的HTML文件
+        # 读取 Cubism 4 Core
+        cubism4_core_path = STATIC_DIR / "live2dcubismcore.min.js"
+        with open(cubism4_core_path, 'r', encoding='utf-8') as f:
+            cubism4_core_content = f.read()
+
+        # 读取 pixi-live2d-display 库
+        pixi_lib_path = STATIC_DIR / "pixi-live2d-display.min.js"
+        with open(pixi_lib_path, 'r', encoding='utf-8') as f:
+            pixi_lib_content = f.read()
+
+        # 读取 HTML 文件
         with open(LIVE2D_HTML, 'r', encoding='utf-8') as f:
             html_content = f.read()
+
+        # 替换本地脚本引用为内联脚本
+        html_content = html_content.replace(
+            '<script src="/file=/Users/kk/Aivo-v2/src/static/live2dcubismcore.min.js"></script>',
+            f'<script>{cubism4_core_content}</script>'
+        ).replace(
+            '<script src="/file=/Users/kk/Aivo-v2/src/static/pixi-live2d-display.min.js"></script>',
+            f'<script>{pixi_lib_content}</script>'
+        )
+
+        print(f"[服务端] Live2D HTML 长度: {len(html_content)} 字符")
 
         # 使用srcdoc直接嵌入
         return f"""
@@ -242,6 +835,40 @@ class AivoWebUIV6:
             border: 2px solid #e5e7eb !important;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
         }
+        /* 按钮悬停效果 */
+        button {
+            transition: all 0.2s ease !important;
+        }
+        button:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(102,126,234,0.3) !important;
+        }
+        /* 输入框优化 */
+        textarea, input {
+            border-radius: 12px !important;
+            border: 2px solid #e5e7eb !important;
+            transition: border-color 0.2s ease !important;
+        }
+        textarea:focus, input:focus {
+            border-color: #667eea !important;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1) !important;
+        }
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5568d3, #6a3f8f);
+        }
         """
 
         with gr.Blocks(title="Aivo V6") as interface:
@@ -255,22 +882,41 @@ class AivoWebUIV6:
                 <div style="position:absolute;top:-50%;right:-5%;width:300px;height:300px;
                     background:radial-gradient(circle,rgba(255,255,255,0.1),transparent);
                     border-radius:50%;"></div>
+                <div style="position:absolute;bottom:-30%;left:-3%;width:250px;height:250px;
+                    background:radial-gradient(circle,rgba(255,255,255,0.08),transparent);
+                    border-radius:50%;"></div>
                 <div style="position:relative;z-index:1;">
                     <div style="font-size:3.2em;font-weight:900;color:white;
                         text-shadow:3px 3px 8px rgba(0,0,0,0.3);
-                        letter-spacing:-1px;">
+                        letter-spacing:-1px;margin-bottom:8px;">
                         🎀 Aivo 数字人 V6
                     </div>
                     <div style="color:rgba(255,255,255,0.95);margin-top:12px;
                         font-size:1.2em;font-weight:600;letter-spacing:0.5px;">
-                        ✨ Live2D交互 · 🎵 气泡语音 · 🛠️ 9种工具 · 🎤 8种音色
+                        ✨ Live2D交互 · 🎵 气泡语音 · 🛠️ 10+工具 · 🎤 8种音色
                     </div>
-                    <div style="margin-top:16px;padding:8px 20px;
-                        background:rgba(255,255,255,0.2);border-radius:20px;
-                        display:inline-block;backdrop-filter:blur(10px);">
-                        <span style="color:white;font-size:0.95em;font-weight:500;">
-                            🆕 语音内嵌对话气泡 | 点击Live2D切换模型
-                        </span>
+                    <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                        <div style="padding:8px 20px;background:rgba(255,255,255,0.2);
+                            border-radius:20px;backdrop-filter:blur(10px);
+                            box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                            <span style="color:white;font-size:0.9em;font-weight:600;">
+                                🆕 一键发送示例
+                            </span>
+                        </div>
+                        <div style="padding:8px 20px;background:rgba(255,255,255,0.2);
+                            border-radius:20px;backdrop-filter:blur(10px);
+                            box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                            <span style="color:white;font-size:0.9em;font-weight:600;">
+                                📊 实时统计面板
+                            </span>
+                        </div>
+                        <div style="padding:8px 20px;background:rgba(255,255,255,0.2);
+                            border-radius:20px;backdrop-filter:blur(10px);
+                            box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                            <span style="color:white;font-size:0.9em;font-weight:600;">
+                                📜 历史导出搜索
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -279,10 +925,24 @@ class AivoWebUIV6:
             with gr.Row():
                 # 左侧：对话区
                 with gr.Column(scale=2):
+                    # 对话框上方的会话选择器
+                    with gr.Row():
+                        with gr.Column(scale=4):
+                            chatbot_session_selector = gr.Dropdown(
+                                choices=self._get_initial_session_choices(),
+                                label="💬 对话历史 - 切换会话",
+                                info="当前会话 | 点击选择其他会话",
+                                value=None,
+                                interactive=True,
+                                show_label=True
+                            )
+                        with gr.Column(scale=1):
+                            quick_load_btn = gr.Button("📂 加载", size="sm", variant="secondary")
+
                     chatbot = gr.Chatbot(
-                        label="💬 对话历史",
-                        height=520,
-                        show_label=True,
+                        label="",
+                        height=460,
+                        show_label=False,
                         avatar_images=(None, None)
                     )
 
@@ -313,9 +973,10 @@ class AivoWebUIV6:
                             label="识别结果",
                             placeholder="语音识别的文本会显示在这里...",
                             interactive=False,
-                            scale=4
+                            scale=3
                         )
-                        clear_btn = gr.Button("🗑️ 清空历史", size="sm", scale=1)
+                        new_session_btn = gr.Button("🆕 新建会话", size="sm", scale=1)
+                        clear_btn = gr.Button("🗑️ 清空所有", size="sm", scale=1)
 
                 # 右侧：Live2D和设置
                 with gr.Column(scale=1):
@@ -341,6 +1002,60 @@ class AivoWebUIV6:
                     # 统计信息
                     stats_display = gr.HTML(self._format_stats())
 
+                    # 历史管理功能
+                    with gr.Accordion("📜 会话管理", open=False):
+                        gr.Markdown("""
+                        <div style="padding:6px;background:linear-gradient(135deg,#fef3c7,#fde68a);
+                            border-radius:8px;margin-bottom:8px;text-align:center;">
+                            <span style="font-weight:600;color:#92400e;font-size:0.85em;">
+                                💾 管理您的对话记录
+                            </span>
+                        </div>
+                        """)
+
+                        # 会话选择
+                        session_selector = gr.Dropdown(
+                            choices=self._get_initial_session_choices(),
+                            label="📂 选择会话",
+                            info="💡 显示第一条消息以便识别",
+                            interactive=True
+                        )
+                        with gr.Row():
+                            refresh_sessions_btn = gr.Button("🔄 刷新列表", size="sm")
+                            load_session_btn = gr.Button("📂 加载会话", size="sm", variant="primary")
+
+                        session_status = gr.Textbox(
+                            label="状态",
+                            interactive=False,
+                            show_label=False
+                        )
+
+                        gr.Markdown("---")
+
+                        # 导出和搜索
+                        with gr.Row():
+                            export_btn = gr.Button("💾 导出当前会话", size="sm")
+                        with gr.Row():
+                            search_input = gr.Textbox(
+                                placeholder="🔍 搜索对话内容...",
+                                show_label=False,
+                                scale=3
+                            )
+                            search_btn = gr.Button("🔎", size="sm", scale=1)
+                        search_results = gr.HTML("")
+
+                        gr.Markdown("""
+                        <div style="margin-top:8px;padding:8px;background:rgba(249,250,251,0.8);
+                            border-radius:6px;font-size:0.75em;color:#6b7280;">
+                            💡 <b>提示：</b><br>
+                            • 🆕 新建会话：保存当前会话并创建新对话<br>
+                            • 🗑️ 清空所有：保存后重置所有数据<br>
+                            • 📂 加载会话：从历史中恢复会话<br>
+                            • 💾 导出：保存对话为JSON文件<br>
+                            • 🔍 搜索：查找当前会话内容
+                        </div>
+                        """)
+
                     # 音色选择 - 更醒目的样式
                     with gr.Accordion("🎵 音色选择", open=True):
                         gr.Markdown("""
@@ -361,62 +1076,167 @@ class AivoWebUIV6:
                             info="✨ 8种专业音色任您选择"
                         )
 
-                    # 工具列表
+                    # 快速示例 - 可点击按钮（一键发送）
+                    with gr.Accordion("💡 快速示例", open=False):
+                        gr.Markdown("""
+                        <div style="padding:8px;background:linear-gradient(135deg,#e0f2fe,#dbeafe);
+                            border-radius:8px;margin-bottom:10px;text-align:center;">
+                            <span style="font-weight:600;color:#0369a1;">
+                                点击下方按钮立即发送
+                            </span>
+                        </div>
+                        """)
+                        with gr.Row():
+                            example_btn1 = gr.Button("🌤️ 北京天气", size="sm")
+                            example_btn2 = gr.Button("🔍 AI最新进展", size="sm")
+                        with gr.Row():
+                            example_btn3 = gr.Button("📰 科技新闻", size="sm")
+                            example_btn4 = gr.Button("🌐 翻译Hello", size="sm")
+                        with gr.Row():
+                            example_btn5 = gr.Button("📅 今天星期几", size="sm")
+                            example_btn6 = gr.Button("💬 讲个笑话", size="sm")
+                        with gr.Row():
+                            example_btn7 = gr.Button("🧮 1+1等于几", size="sm")
+                            example_btn8 = gr.Button("🎵 推荐歌曲", size="sm")
+
+                    # 可用工具展示
                     with gr.Accordion("🛠️ 可用工具", open=False):
-                        gr.HTML("""
-                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-                            <div style="background:linear-gradient(135deg,#ffecd2,#fcb69f);
-                                padding:10px;border-radius:10px;text-align:center;font-weight:600;color:#8B4513;">
-                                🌤️ 天气
-                            </div>
-                            <div style="background:linear-gradient(135deg,#ffecd2,#fcb69f);
-                                padding:10px;border-radius:10px;text-align:center;font-weight:600;color:#8B4513;">
-                                ⏰ 时间
-                            </div>
-                            <div style="background:linear-gradient(135deg,#ffecd2,#fcb69f);
-                                padding:10px;border-radius:10px;text-align:center;font-weight:600;color:#8B4513;">
-                                🔢 计算
-                            </div>
-                            <div style="background:linear-gradient(135deg,#ffecd2,#fcb69f);
-                                padding:10px;border-radius:10px;text-align:center;font-weight:600;color:#8B4513;">
-                                🔍 搜索
-                            </div>
-                            <div style="background:linear-gradient(135deg,#ffecd2,#fcb69f);
-                                padding:10px;border-radius:10px;text-align:center;font-weight:600;color:#8B4513;">
-                                ⏱️ 提醒
-                            </div>
-                            <div style="background:linear-gradient(135deg,#ffecd2,#fcb69f);
-                                padding:10px;border-radius:10px;text-align:center;font-weight:600;color:#8B4513;">
-                                📰 新闻
-                            </div>
-                            <div style="background:linear-gradient(135deg,#ffecd2,#fcb69f);
-                                padding:10px;border-radius:10px;text-align:center;font-weight:600;color:#8B4513;">
-                                🌐 翻译
-                            </div>
-                            <div style="background:linear-gradient(135deg,#ffecd2,#fcb69f);
-                                padding:10px;border-radius:10px;text-align:center;font-weight:600;color:#8B4513;">
-                                📚 维基
-                            </div>
-                            <div style="background:linear-gradient(135deg,#ffecd2,#fcb69f);
-                                padding:10px;border-radius:10px;text-align:center;font-weight:600;color:#8B4513;">
-                                📝 笔记
-                            </div>
+                        gr.Markdown("""
+                        <div style="padding:10px;background:linear-gradient(135deg,#fef3c7,#fde68a);
+                            border-radius:8px;margin-bottom:10px;text-align:center;">
+                            <span style="font-weight:700;color:#92400e;">
+                                🚀 强大的工具库
+                            </span>
+                        </div>
+                        """)
+                        with gr.Row():
+                            tool_btn1 = gr.Button("🌤️ 天气查询", size="sm")
+                            tool_btn2 = gr.Button("🔍 网络搜索", size="sm")
+                        with gr.Row():
+                            tool_btn3 = gr.Button("🌐 文本翻译", size="sm")
+                            tool_btn4 = gr.Button("🧮 数学计算", size="sm")
+                        with gr.Row():
+                            tool_btn5 = gr.Button("📅 日期时间", size="sm")
+                            tool_btn6 = gr.Button("📰 新闻资讯", size="sm")
+                        with gr.Row():
+                            tool_btn7 = gr.Button("💱 汇率换算", size="sm")
+                            tool_btn8 = gr.Button("🎲 随机数生成", size="sm")
+                        with gr.Row():
+                            tool_btn9 = gr.Button("📝 文本处理", size="sm")
+                            tool_btn10 = gr.Button("🎨 创意灵感", size="sm")
+
+                    # Soul Memory 管理
+                    with gr.Accordion("🧠 Soul Memory", open=False):
+                        gr.Markdown("""
+                        <div style="padding:10px;background:linear-gradient(135deg,#e0c3fc,#8ec5fc);
+                            border-radius:8px;margin-bottom:10px;text-align:center;">
+                            <span style="font-weight:700;color:#4338ca;">
+                                🌟 灵魂记忆与技能系统
+                            </span>
                         </div>
                         """)
 
-                    # 快速示例
-                    with gr.Accordion("💡 快速示例", open=False):
-                        gr.Examples(
-                            examples=[
-                                ["你好，我是小明"],
-                                ["北京今天天气怎么样？"],
-                                ["帮我翻译：人工智能"],
-                                ["提醒我1小时后开会"],
-                                ["搜索一下机器学习"],
-                                ["现在几点了？"],
-                                ["帮我记笔记：明天交报告"]
-                            ],
-                            inputs=msg_input
+                        # 记忆摘要显示
+                        memory_summary = gr.HTML(
+                            value=self._format_memory_summary(),
+                            label="记忆摘要"
+                        )
+
+                        with gr.Tabs():
+                            # 人格设定
+                            with gr.Tab("🎭 人格"):
+                                personality_name = gr.Textbox(
+                                    label="名称",
+                                    value=self.soul_memory.personality["name"]
+                                )
+                                personality_role = gr.Textbox(
+                                    label="角色",
+                                    value=self.soul_memory.personality["role"]
+                                )
+                                personality_traits = gr.Textbox(
+                                    label="特质",
+                                    placeholder="可用逗号、顿号分隔多个特质，如：友好，专业，高效",
+                                    value="，".join(self.soul_memory.personality["traits"])
+                                )
+                                personality_style = gr.Textbox(
+                                    label="说话风格",
+                                    value=self.soul_memory.personality["speaking_style"]
+                                )
+                                update_personality_btn = gr.Button("💾 保存人格设定", variant="primary")
+
+                            # 用户画像
+                            with gr.Tab("👤 用户"):
+                                user_name = gr.Textbox(
+                                    label="用户名称",
+                                    value=self.soul_memory.user_profile.get("name", "")
+                                )
+                                user_interests = gr.Textbox(
+                                    label="兴趣爱好",
+                                    placeholder="可用逗号、顿号分隔多个兴趣，如：编程，音乐，运动",
+                                    value="，".join(self.soul_memory.user_profile["interests"])
+                                )
+                                user_habits = gr.Textbox(
+                                    label="使用习惯",
+                                    placeholder="可用逗号、顿号分隔多个习惯，如：晚上工作，喜欢语音交互",
+                                    value="，".join(self.soul_memory.user_profile["habits"])
+                                )
+                                user_background = gr.Textbox(
+                                    label="背景信息",
+                                    value=self.soul_memory.user_profile.get("background", "")
+                                )
+                                update_user_btn = gr.Button("💾 保存用户画像", variant="primary")
+
+                            # 技能管理
+                            with gr.Tab("🛠️ 技能"):
+                                skills_display = gr.HTML(
+                                    value=self._format_skills_display()
+                                )
+                                new_skill_name = gr.Textbox(
+                                    label="新技能名称",
+                                    placeholder="例如：Python编程"
+                                )
+                                new_skill_level = gr.Dropdown(
+                                    label="技能等级",
+                                    choices=["beginner", "intermediate", "expert"],
+                                    value="intermediate"
+                                )
+                                with gr.Row():
+                                    add_skill_btn = gr.Button("➕ 添加技能", size="sm")
+                                    refresh_skills_btn = gr.Button("🔄 刷新列表", size="sm")
+
+                            # 偏好设置
+                            with gr.Tab("⚙️ 偏好"):
+                                pref_language = gr.Dropdown(
+                                    label="语言",
+                                    choices=["中文", "English", "日本語"],
+                                    value=self.soul_memory.preferences["language"]
+                                )
+                                pref_response_style = gr.Dropdown(
+                                    label="回复风格",
+                                    choices=["简洁", "适中", "详细"],
+                                    value=self.soul_memory.preferences["response_style"]
+                                )
+                                pref_emoji = gr.Dropdown(
+                                    label="表情符号使用",
+                                    choices=["少", "适中", "多"],
+                                    value=self.soul_memory.preferences["emoji_usage"]
+                                )
+                                pref_formality = gr.Dropdown(
+                                    label="正式程度",
+                                    choices=["随意", "友好", "正式"],
+                                    value=self.soul_memory.preferences["formality"]
+                                )
+                                update_preferences_btn = gr.Button("💾 保存偏好设置", variant="primary")
+
+                        # 导入导出
+                        with gr.Row():
+                            export_memory_btn = gr.Button("💾 导出记忆", size="sm")
+                            import_memory_btn = gr.Button("📂 导入记忆", size="sm")
+
+                        memory_status = gr.Textbox(
+                            label="状态",
+                            interactive=False,
+                            show_label=False
                         )
 
             # 底部信息 - 更有特色
@@ -424,34 +1244,45 @@ class AivoWebUIV6:
             <div style="text-align:center;margin-top:30px;padding:24px;
                 background:linear-gradient(135deg,#e0e7ff,#f3e8ff);
                 border-radius:20px;border:2px solid #c7d2fe;">
-                <div style="font-size:1.2em;font-weight:700;color:#5b21b6;margin-bottom:12px;">
-                    ✨ Aivo V6 核心特性
+                <div style="font-size:1.3em;font-weight:800;color:#5b21b6;margin-bottom:16px;">
+                    ✨ Aivo V6 数字人助手
                 </div>
-                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px;">
-                    <div style="background:white;padding:12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                        <div style="font-size:1.5em;margin-bottom:4px;">🎀</div>
-                        <div style="font-weight:600;color:#4338ca;">Live2D数字人</div>
-                        <div style="font-size:0.85em;color:#64748b;">可点击切换模型</div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px;">
+                    <div style="background:white;padding:12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);
+                        transition:transform 0.2s;">
+                        <div style="font-size:1.8em;margin-bottom:6px;">🎀</div>
+                        <div style="font-weight:700;color:#4338ca;font-size:0.9em;">Live2D</div>
+                        <div style="font-size:0.75em;color:#64748b;">3个模型</div>
                     </div>
                     <div style="background:white;padding:12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                        <div style="font-size:1.5em;margin-bottom:4px;">🎵</div>
-                        <div style="font-weight:600;color:#4338ca;">气泡语音</div>
-                        <div style="font-size:0.85em;color:#64748b;">音频嵌入对话</div>
+                        <div style="font-size:1.8em;margin-bottom:6px;">🎵</div>
+                        <div style="font-weight:700;color:#4338ca;font-size:0.9em;">气泡语音</div>
+                        <div style="font-size:0.75em;color:#64748b;">内嵌音频</div>
                     </div>
                     <div style="background:white;padding:12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                        <div style="font-size:1.5em;margin-bottom:4px;">🛠️</div>
-                        <div style="font-weight:600;color:#4338ca;">9种工具</div>
-                        <div style="font-size:0.85em;color:#64748b;">天气·搜索·翻译等</div>
+                        <div style="font-size:1.8em;margin-bottom:6px;">🛠️</div>
+                        <div style="font-weight:700;color:#4338ca;font-size:0.9em;">10+工具</div>
+                        <div style="font-size:0.75em;color:#64748b;">全功能</div>
                     </div>
                     <div style="background:white;padding:12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                        <div style="font-size:1.5em;margin-bottom:4px;">🎤</div>
-                        <div style="font-weight:600;color:#4338ca;">8种音色</div>
-                        <div style="font-size:0.85em;color:#64748b;">中英双语支持</div>
+                        <div style="font-size:1.8em;margin-bottom:6px;">🎤</div>
+                        <div style="font-weight:700;color:#4338ca;font-size:0.9em;">8种音色</div>
+                        <div style="font-size:0.75em;color:#64748b;">中英双语</div>
                     </div>
                 </div>
-                <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e0e7ff;">
-                    <small style="color:#6b7280;">
-                        💡 提示：播放语音时Live2D会自动说话 | 支持语音输入和文本输入
+                <div style="margin-top:18px;padding:12px;background:rgba(255,255,255,0.6);
+                    border-radius:12px;backdrop-filter:blur(10px);">
+                    <div style="font-size:0.9em;color:#4338ca;font-weight:600;margin-bottom:8px;">
+                        🚀 快速上手
+                    </div>
+                    <div style="font-size:0.8em;color:#6b7280;line-height:1.6;">
+                        💡 点击右侧"快速示例"立即体验 | 🔧 "可用工具"查看所有功能<br>
+                        📜 "历史管理"可导出和搜索对话 | 📊 实时统计面板显示详细数据
+                    </div>
+                </div>
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e0e7ff;">
+                    <small style="color:#9ca3af;font-size:0.75em;">
+                        Powered by Claude 4 · Live2D · Fish Audio TTS
                     </small>
                 </div>
             </div>
@@ -463,7 +1294,7 @@ class AivoWebUIV6:
                 inputs=[msg_input, chatbot, voice_selector],
                 outputs=[chatbot, stats_display]
             ).then(
-                fn=lambda: f"speaking_{int(__import__('time').time() * 1000)}",  # 每次生成唯一值
+                fn=lambda: f"speaking_{self.current_emotion}_{int(__import__('time').time() * 1000)}",  # 包含情感
                 outputs=speaking_trigger
             ).then(
                 fn=lambda: "",
@@ -475,7 +1306,7 @@ class AivoWebUIV6:
                 inputs=[msg_input, chatbot, voice_selector],
                 outputs=[chatbot, stats_display]
             ).then(
-                fn=lambda: f"speaking_{int(__import__('time').time() * 1000)}",  # 每次生成唯一值
+                fn=lambda: f"speaking_{self.current_emotion}_{int(__import__('time').time() * 1000)}",  # 包含情感
                 outputs=speaking_trigger
             ).then(
                 fn=lambda: "",
@@ -488,9 +1319,248 @@ class AivoWebUIV6:
                 outputs=[chatbot, stats_display, recognized_text]
             )
 
+            new_session_btn.click(
+                fn=self.new_session,
+                outputs=[chatbot, stats_display]
+            )
+
             clear_btn.click(
                 fn=self.clear_history,
                 outputs=[chatbot, stats_display]
+            )
+
+            # 历史管理事件
+            def refresh_sessions():
+                """刷新会话列表"""
+                sessions = self._get_sessions_list()
+                choices = []
+                for s in sessions:
+                    # 格式：💬 "第一条消息..." (5条对话) - 2025-06-21 14:30
+                    choice = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']}"
+                    choices.append(choice)
+                return gr.Dropdown(choices=choices)
+
+            def refresh_both_session_selectors():
+                """同时刷新两个会话选择器"""
+                sessions = self._get_sessions_list()
+                choices = []
+                for s in sessions:
+                    choice = f"💬 \"{s['first_message']}\" ({s['conversation_count']}条) - {s['last_updated']}"
+                    choices.append(choice)
+                return gr.Dropdown(choices=choices), gr.Dropdown(choices=choices)
+
+            refresh_sessions_btn.click(
+                fn=refresh_both_session_selectors,
+                outputs=[session_selector, chatbot_session_selector]
+            )
+
+            def load_session_from_choice(choice):
+                """从选择中加载会话"""
+                if not choice:
+                    return None, self._format_stats(), "请先选择会话", None
+
+                # 从显示文本中提取时间戳，再从时间戳推导出 session_id
+                # 格式：💬 "消息..." (5条) - 2025-06-21 14:30
+                try:
+                    # 提取最后的时间部分
+                    time_part = choice.split(" - ")[-1]  # "2025-06-21 14:30"
+                    # 转换为 session_id 格式 20250621_1430
+                    session_id = time_part.replace("-", "").replace(":", "").replace(" ", "_")[:13]
+
+                    # 尝试加载
+                    result = self.load_session(session_id)
+                    # result 包含: history, stats, status, current_display
+                    return result[0], result[1], result[2], result[3] if len(result) > 3 else choice
+                except Exception as e:
+                    print(f"解析会话失败: {e}")
+                    # 备用方案：从所有会话中匹配
+                    sessions = self._get_sessions_list()
+                    for s in sessions:
+                        if s['last_updated'] in choice:
+                            result = self.load_session(s['id'])
+                            return result[0], result[1], result[2], result[3] if len(result) > 3 else choice
+                    return None, self._format_stats(), "❌ 无法加载会话", None
+
+            # 右侧面板的加载按钮 - 同步更新两个选择器
+            load_session_btn.click(
+                fn=load_session_from_choice,
+                inputs=[session_selector],
+                outputs=[chatbot, stats_display, session_status, chatbot_session_selector]
+            )
+
+            # 对话框上方的快速加载按钮 - 同步更新两个选择器
+            quick_load_btn.click(
+                fn=load_session_from_choice,
+                inputs=[chatbot_session_selector],
+                outputs=[chatbot, stats_display, session_status, session_selector]
+            )
+
+            export_btn.click(
+                fn=self.export_history,
+                outputs=None
+            ).then(
+                fn=lambda path: f"✅ 历史已导出到: {path}" if path else "❌ 没有可导出的历史",
+                inputs=None,
+                outputs=search_results
+            )
+
+            search_btn.click(
+                fn=self.search_history,
+                inputs=[search_input],
+                outputs=[search_results]
+            )
+
+            # 快速示例按钮 - 直接发送消息
+            def quick_send(prompt_text):
+                """快速发送示例消息"""
+                return prompt_text
+
+            example_btn1.click(
+                fn=lambda: "北京今天天气怎么样？",
+                outputs=msg_input
+            ).then(
+                fn=self.chat,
+                inputs=[msg_input, chatbot, voice_selector],
+                outputs=[chatbot, stats_display]
+            ).then(
+                fn=lambda: f"speaking_{self.current_emotion}_{int(__import__('time').time() * 1000)}",
+                outputs=speaking_trigger
+            )
+
+            example_btn2.click(
+                fn=lambda: "帮我搜索一下人工智能的最新进展",
+                outputs=msg_input
+            ).then(
+                fn=self.chat,
+                inputs=[msg_input, chatbot, voice_selector],
+                outputs=[chatbot, stats_display]
+            ).then(
+                fn=lambda: f"speaking_{self.current_emotion}_{int(__import__('time').time() * 1000)}",
+                outputs=speaking_trigger
+            )
+
+            example_btn3.click(
+                fn=lambda: "给我看看今天的科技新闻",
+                outputs=msg_input
+            ).then(
+                fn=self.chat,
+                inputs=[msg_input, chatbot, voice_selector],
+                outputs=[chatbot, stats_display]
+            ).then(
+                fn=lambda: f"speaking_{self.current_emotion}_{int(__import__('time').time() * 1000)}",
+                outputs=speaking_trigger
+            )
+
+            example_btn4.click(
+                fn=lambda: "把'Hello World'翻译成中文",
+                outputs=msg_input
+            ).then(
+                fn=self.chat,
+                inputs=[msg_input, chatbot, voice_selector],
+                outputs=[chatbot, stats_display]
+            ).then(
+                fn=lambda: f"speaking_{self.current_emotion}_{int(__import__('time').time() * 1000)}",
+                outputs=speaking_trigger
+            )
+
+            example_btn5.click(
+                fn=lambda: "今天是星期几？现在几点了？",
+                outputs=msg_input
+            ).then(
+                fn=self.chat,
+                inputs=[msg_input, chatbot, voice_selector],
+                outputs=[chatbot, stats_display]
+            ).then(
+                fn=lambda: f"speaking_{self.current_emotion}_{int(__import__('time').time() * 1000)}",
+                outputs=speaking_trigger
+            )
+
+            example_btn6.click(
+                fn=lambda: "给我讲个笑话吧",
+                outputs=msg_input
+            ).then(
+                fn=self.chat,
+                inputs=[msg_input, chatbot, voice_selector],
+                outputs=[chatbot, stats_display]
+            ).then(
+                fn=lambda: f"speaking_{self.current_emotion}_{int(__import__('time').time() * 1000)}",
+                outputs=speaking_trigger
+            )
+
+            example_btn7.click(
+                fn=lambda: "1加1等于几？帮我算一下",
+                outputs=msg_input
+            ).then(
+                fn=self.chat,
+                inputs=[msg_input, chatbot, voice_selector],
+                outputs=[chatbot, stats_display]
+            ).then(
+                fn=lambda: f"speaking_{self.current_emotion}_{int(__import__('time').time() * 1000)}",
+                outputs=speaking_trigger
+            )
+
+            example_btn8.click(
+                fn=lambda: "推荐几首好听的歌曲给我",
+                outputs=msg_input
+            ).then(
+                fn=self.chat,
+                inputs=[msg_input, chatbot, voice_selector],
+                outputs=[chatbot, stats_display]
+            ).then(
+                fn=lambda: f"speaking_{self.current_emotion}_{int(__import__('time').time() * 1000)}",
+                outputs=speaking_trigger
+            )
+
+            # 工具按钮 - 填充到输入框
+            tool_btn1.click(lambda: "帮我查询一下上海今天的天气", outputs=msg_input)
+            tool_btn2.click(lambda: "搜索一下最近有什么重大新闻", outputs=msg_input)
+            tool_btn3.click(lambda: "把'Thank you'翻译成法语", outputs=msg_input)
+            tool_btn4.click(lambda: "帮我计算 123 * 456", outputs=msg_input)
+            tool_btn5.click(lambda: "现在是什么时间？今天几号？", outputs=msg_input)
+            tool_btn6.click(lambda: "给我看看今天的头条新闻", outputs=msg_input)
+            tool_btn7.click(lambda: "100美元等于多少人民币？", outputs=msg_input)
+            tool_btn8.click(lambda: "给我生成一个1到100之间的随机数", outputs=msg_input)
+            tool_btn9.click(lambda: "帮我把这段文字转换成大写：hello world", outputs=msg_input)
+            tool_btn10.click(lambda: "给我一些关于写作的创意灵感", outputs=msg_input)
+
+            # Soul Memory 事件绑定
+            update_personality_btn.click(
+                fn=self.update_personality_memory,
+                inputs=[personality_name, personality_role, personality_traits, personality_style],
+                outputs=[memory_summary, memory_status]
+            )
+
+            update_user_btn.click(
+                fn=self.update_user_memory,
+                inputs=[user_name, user_interests, user_habits, user_background],
+                outputs=[memory_summary, memory_status]
+            )
+
+            add_skill_btn.click(
+                fn=self.add_skill_to_memory,
+                inputs=[new_skill_name, new_skill_level],
+                outputs=[skills_display, memory_status]
+            )
+
+            refresh_skills_btn.click(
+                fn=lambda: self._format_skills_display(),
+                outputs=[skills_display]
+            )
+
+            update_preferences_btn.click(
+                fn=self.update_preferences_memory,
+                inputs=[pref_language, pref_response_style, pref_emoji, pref_formality],
+                outputs=[memory_summary, memory_status]
+            )
+
+            export_memory_btn.click(
+                fn=self.export_memory,
+                outputs=[memory_status]
+            )
+
+            import_memory_btn.click(
+                fn=lambda: "💡 请使用文件管理器手动导入 memory/ 目录下的 JSON 文件",
+                outputs=[memory_status]
             )
 
             # 监听 speaking_trigger 的变化，触发 JavaScript
@@ -514,14 +1584,17 @@ class AivoWebUIV6:
                     });
 
                     // 如果是speaking状态，5秒后自动发送idle
-                    if (value === 'speaking') {
+                    if (value && value.toString().startsWith('speaking')) {
                         console.log('[Trigger] 设置5秒后自动停止');
                         setTimeout(function() {
                             console.log('[Trigger] 自动发送idle消息');
                             iframes.forEach(function(iframe) {
                                 try {
                                     iframe.contentWindow.postMessage('idle', '*');
-                                } catch(e) {}
+                                    console.log('[Trigger] 已发送idle消息');
+                                } catch(e) {
+                                    console.log('[Trigger] 发送idle失败:', e);
+                                }
                             });
                         }, 5000);
                     }
@@ -539,17 +1612,22 @@ def main():
     print("=" * 60)
     print("🚀 Aivo V6 启动中...")
     print("=" * 60)
-    print("\n✨ V6 特性：")
+    print("\n✨ V6 新特性：")
     print("  ✓ Live2D数字人（iframe加载，可点击切换）")
     print("  ✓ 语音内嵌在对话气泡中（自动播放）")
-    print("  ✓ 9个实用工具（天气/搜索/翻译等）")
+    print("  ✓ 10+实用工具（天气/搜索/翻译/计算等）")
     print("  ✓ 8种音色选择（中英双语）")
+    print("  ✓ 一键发送快速示例（无需手动发送）")
+    print("  ✓ 实时统计面板（响应时间、情感分布等）")
+    print("  ✓ 历史管理（导出JSON、搜索对话）")
     print("  ✓ 全新UI设计（更美观易用）")
-    print("\n💡 提示：")
-    print("  - Live2D在右侧显示")
-    print("  - 点击Live2D可以切换模型（3个模型循环）")
+    print("\n💡 使用提示：")
+    print("  - Live2D在右侧显示，点击可切换模型（3个模型循环）")
     print("  - 播放语音时Live2D会自动说话")
-    print("  - 支持鼠标滚轮上下滚动浏览")
+    print("  - 点击\"快速示例\"按钮立即发送，无需手动输入")
+    print("  - 支持语音输入和文本输入")
+    print("  - 可导出对话历史为JSON文件")
+    print("  - 实时查看统计数据和情感分布")
     print("\n" + "=" * 60)
 
     ui = AivoWebUIV6()
